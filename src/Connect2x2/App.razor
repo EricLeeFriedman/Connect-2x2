@@ -1,0 +1,378 @@
+<main class="game">
+    <header class="title">
+        <h1>Connect <span class="red-text">2</span> × <span class="yellow-text">2</span></h1>
+        <p>Four in a row wins, but every piece costs a times-table fact.</p>
+    </header>
+
+    <section class="scoreboard" aria-label="Score">
+        @foreach (var player in Players)
+        {
+            <div class="score @Css(player) @(IsActive(player) ? "active" : "")">
+                <span class="chip @Css(player)"></span>
+                <div class="score-text">
+                    <span class="score-name">@Name(player)</span>
+                    <span class="score-facts">@session.CorrectAnswers[player] / @session.Attempts[player] facts right</span>
+                </div>
+                <span class="score-wins" title="Games won">@session.Wins[player]</span>
+            </div>
+        }
+    </section>
+
+    <section class="status @(session.IsOver ? "over" : "")" aria-live="polite">
+        @if (!string.IsNullOrEmpty(feedback))
+        {
+            <p class="feedback @feedbackKind">@feedback</p>
+        }
+        <p class="turn">
+            @if (!session.IsOver)
+            {
+                <span class="chip small @Css(session.CurrentPlayer)"></span>
+            }
+            @StatusText()
+        </p>
+        @if (session.IsOver)
+        {
+            <button type="button" class="primary" @onclick="NewGame">Play again</button>
+        }
+    </section>
+
+    <div class="board-frame">
+        <div class="board" tabindex="0" aria-label="Game board. Use the arrow keys to choose a column and Enter to drop."
+             @ref="boardRef" @onkeydown="OnBoardKeyDown" @onmouseleave="() => hoverColumn = null">
+            @for (var r = Board.Rows - 1; r >= 0; r--)
+            {
+                var row = r;
+                <div class="label row-label @(TargetCell()?.Row == row ? "hot" : "")">@Board.RowFactor(row)</div>
+                @for (var c = 0; c < Board.Columns; c++)
+                {
+                    var col = c;
+                    var owner = session.Board[row, col];
+                    <div class="@CellClass(row, col)" @onclick="() => SelectColumn(col)" @onmouseenter="() => hoverColumn = col">
+                        @if (owner != Player.None)
+                        {
+                            <div class="@PieceClass(row, col, owner)" style="--fall: @(Board.Rows - row)"></div>
+                        }
+                        else if (TargetCell() == new Cell(row, col))
+                        {
+                            <span class="hint">@Board.RowFactor(row)×@Board.ColumnFactor(col)</span>
+                        }
+                    </div>
+                }
+            }
+            <div class="label corner">×</div>
+            @for (var c = 0; c < Board.Columns; c++)
+            {
+                var col = c;
+                <div class="label col-label @(TargetCell()?.Column == col ? "hot" : "")"
+                     @onclick="() => SelectColumn(col)" @onmouseenter="() => hoverColumn = col">@Board.ColumnFactor(col)</div>
+            }
+        </div>
+    </div>
+
+    <section class="options">
+        <fieldset>
+            <legend>Wrong answer?</legend>
+            <label>
+                <input type="radio" name="rule" checked="@(session.Rule == WrongAnswerRule.LoseTurn)"
+                       @onchange="() => session.Rule = WrongAnswerRule.LoseTurn" />
+                Lose your turn
+            </label>
+            <label>
+                <input type="radio" name="rule" checked="@(session.Rule == WrongAnswerRule.TryAgain)"
+                       @onchange="() => session.Rule = WrongAnswerRule.TryAgain" />
+                Keep trying
+            </label>
+        </fieldset>
+        <button type="button" class="secondary" @onclick="NewGame">New game</button>
+    </section>
+
+    <details class="how-to">
+        <summary>How to play</summary>
+        <ol>
+            <li>Take turns picking a column. Your piece goes to the lowest open spot, just like Connect 4.</li>
+            <li>Multiply the number beside that row by the number under that column.</li>
+            <li>Get it right and your piece drops in. Get it wrong and, depending on the setting, you lose your turn or try again.</li>
+            <li>First to connect four in a row (across, up, or diagonal) wins.</li>
+        </ol>
+        <p>Keyboard: arrow keys pick a column, Enter drops. In a question, type the number and press Enter, or Esc to pick again.</p>
+    </details>
+</main>
+
+@if (session.Pending is Cell pending)
+{
+    <div class="overlay" @onclick="CancelQuestion">
+        <div class="question-card @Css(session.CurrentPlayer)" role="dialog" aria-modal="true" aria-label="Multiplication question"
+             tabindex="-1" @ref="questionRef" @onkeydown="OnQuestionKeyDown" @onclick:stopPropagation="true">
+            <p class="question-who">
+                <span class="chip small @Css(session.CurrentPlayer)"></span>
+                @(Name(session.CurrentPlayer))'s question
+            </p>
+            <p class="equation">
+                <span>@Board.RowFactor(pending.Row)</span>
+                <span class="op">×</span>
+                <span>@Board.ColumnFactor(pending.Column)</span>
+                <span class="op">=</span>
+                <span class="answer-box @(answerText.Length == 0 ? "empty" : "") @(wrongTries > 0 ? "wrong" : "")" @key="wrongTries">
+                    @(answerText.Length == 0 ? "?" : answerText)
+                </span>
+            </p>
+            <p class="question-feedback">@questionFeedback</p>
+
+            <div class="numpad">
+                @foreach (var digit in "123456789")
+                {
+                    <button type="button" tabindex="-1" @onmousedown:preventDefault="true" @onclick="() => AppendDigit(digit)">@digit</button>
+                }
+                <button type="button" tabindex="-1" class="key-back" aria-label="Delete" @onmousedown:preventDefault="true" @onclick="Backspace">⌫</button>
+                <button type="button" tabindex="-1" @onmousedown:preventDefault="true" @onclick="() => AppendDigit('0')">0</button>
+                <button type="button" tabindex="-1" class="key-enter" aria-label="Check answer" @onmousedown:preventDefault="true" @onclick="Submit">✓</button>
+            </div>
+
+            <button type="button" class="link" tabindex="-1" @onmousedown:preventDefault="true" @onclick="CancelQuestion">Pick a different column</button>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly Player[] Players = [Player.Red, Player.Yellow];
+    private const int MaxAnswerDigits = 3;
+
+    private readonly GameSession session = new();
+
+    private int? hoverColumn;
+    private string answerText = "";
+    private string? feedback;
+    private string feedbackKind = "";
+    private string? questionFeedback;
+    private int wrongTries;
+    private bool focusQuestion;
+    private bool focusBoard;
+    private ElementReference boardRef;
+    private ElementReference questionRef;
+
+    private static string Name(Player player) => player == Player.Red ? "Red" : "Yellow";
+
+    private static string Css(Player player) => player == Player.Red ? "red" : "yellow";
+
+    private bool IsActive(Player player) => !session.IsOver && session.CurrentPlayer == player;
+
+    private string StatusText()
+    {
+        if (session.Winner != Player.None)
+        {
+            return $"{Name(session.Winner)} connects four and wins!";
+        }
+
+        if (session.IsDraw)
+        {
+            return "The board is full. It's a draw!";
+        }
+
+        return $"{Name(session.CurrentPlayer)}'s turn: pick a column.";
+    }
+
+    /// <summary>The spot being asked about, or the spot the hovered column would land on.</summary>
+    private Cell? TargetCell()
+    {
+        if (session.Pending is Cell pending)
+        {
+            return pending;
+        }
+
+        if (session.IsOver || hoverColumn is not int column)
+        {
+            return null;
+        }
+
+        var row = session.Board.LowestEmptyRow(column);
+        return row is int r ? new Cell(r, column) : (Cell?)null;
+    }
+
+    private string CellClass(int row, int column)
+    {
+        var classes = "cell";
+        if (!session.IsOver && TargetCell()?.Column == column)
+        {
+            classes += " col-hot";
+        }
+
+        if (TargetCell() == new Cell(row, column))
+        {
+            classes += " target " + Css(session.CurrentPlayer);
+        }
+
+        return classes;
+    }
+
+    private string PieceClass(int row, int column, Player owner)
+    {
+        var cell = new Cell(row, column);
+        var classes = "piece " + Css(owner);
+        if (session.LastPlaced == cell)
+        {
+            classes += " drop";
+        }
+
+        if (session.WinningCells.Contains(cell))
+        {
+            classes += " win";
+        }
+
+        return classes;
+    }
+
+    private void SelectColumn(int column)
+    {
+        if (session.IsOver || session.Pending is not null)
+        {
+            return;
+        }
+
+        hoverColumn = column;
+        if (session.TrySelectColumn(column))
+        {
+            answerText = "";
+            questionFeedback = null;
+            wrongTries = 0;
+            focusQuestion = true;
+        }
+        else
+        {
+            feedback = "That column is full. Pick another one.";
+            feedbackKind = "info";
+        }
+    }
+
+    private void OnBoardKeyDown(KeyboardEventArgs e)
+    {
+        if (session.IsOver || session.Pending is not null)
+        {
+            return;
+        }
+
+        var middle = Board.Columns / 2;
+        switch (e.Key)
+        {
+            case "ArrowLeft":
+                hoverColumn = hoverColumn is int left ? Math.Max(0, left - 1) : middle;
+                break;
+            case "ArrowRight":
+                hoverColumn = hoverColumn is int right ? Math.Min(Board.Columns - 1, right + 1) : middle;
+                break;
+            case "Enter":
+            case "ArrowDown":
+                SelectColumn(hoverColumn ?? middle);
+                break;
+        }
+    }
+
+    private void OnQuestionKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key.Length == 1 && char.IsAsciiDigit(e.Key[0]))
+        {
+            AppendDigit(e.Key[0]);
+        }
+        else if (e.Key == "Backspace" || e.Key == "Delete")
+        {
+            Backspace();
+        }
+        else if (e.Key == "Enter")
+        {
+            Submit();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelQuestion();
+        }
+    }
+
+    private void AppendDigit(char digit)
+    {
+        if (answerText.Length < MaxAnswerDigits)
+        {
+            answerText += digit;
+        }
+
+        questionFeedback = null;
+    }
+
+    private void Backspace()
+    {
+        if (answerText.Length > 0)
+        {
+            answerText = answerText[..^1];
+        }
+    }
+
+    private void Submit()
+    {
+        if (session.Pending is not Cell cell)
+        {
+            return;
+        }
+
+        if (answerText.Length == 0)
+        {
+            questionFeedback = "Type your answer first.";
+            return;
+        }
+
+        var answer = int.Parse(answerText);
+        var fact = $"{Board.RowFactor(cell.Row)} × {Board.ColumnFactor(cell.Column)} = {Board.Product(cell)}";
+
+        switch (session.SubmitAnswer(answer))
+        {
+            case AnswerResult.Correct:
+                feedback = $"Correct! {fact}";
+                feedbackKind = "good";
+                focusBoard = true;
+                break;
+            case AnswerResult.WrongTryAgain:
+                wrongTries++;
+                questionFeedback = $"{answer} isn't it. Try again!";
+                answerText = "";
+                focusQuestion = true;
+                break;
+            case AnswerResult.WrongTurnLost:
+                feedback = $"Not quite: {fact}. Turn passes to {Name(session.CurrentPlayer)}.";
+                feedbackKind = "bad";
+                focusBoard = true;
+                break;
+        }
+    }
+
+    private void CancelQuestion()
+    {
+        session.CancelQuestion();
+        focusBoard = true;
+    }
+
+    private void NewGame()
+    {
+        session.NewGame();
+        feedback = $"New game! {Name(session.CurrentPlayer)} goes first.";
+        feedbackKind = "info";
+        hoverColumn = null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (focusQuestion && session.Pending is not null)
+            {
+                focusQuestion = false;
+                await questionRef.FocusAsync();
+            }
+            else if (focusBoard)
+            {
+                focusBoard = false;
+                await boardRef.FocusAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // The element was not on screen yet; focus is only a convenience.
+        }
+    }
+}
