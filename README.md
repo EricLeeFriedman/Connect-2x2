@@ -19,14 +19,19 @@ For live reload while editing, use `dotnet watch --project src/Connect2x2` inste
 
 ## How to play
 
-- Players take turns. Click a column (or use the arrow keys and Enter). The question is for the lowest open spot in that column.
+- Players take turns. Tap or click an open spot; only the lowest open spot in each column can be picked (or use the arrow keys and Enter).
 - Type the answer with the keyboard or the on-screen number pad, then press Enter or ✓. Esc or "Pick a different column" backs out.
 - **Wrong answer?** Choose under the board: *Lose your turn* (the answer is shown and play passes on) or *Keep trying*.
 - Win by connecting four across, up, or diagonally. Scores and "facts right" carry over between games, and the starting player alternates.
 
 ## Play it online
 
-Every push to `main` deploys the game to GitHub Pages at **https://ericleefriedman.github.io/Connect-2x2/** (one-time setup: repo Settings → Pages → Source: *GitHub Actions*). It works on phones, tablets, and computers.
+The game is live at **https://ericleefriedman.github.io/Connect-2x2/** and works on phones, tablets, and computers.
+
+## How changes ship
+
+- **Pull requests merge themselves.** When the Build check passes on a pull request from a branch in this repo, the Auto-merge workflow merges it. Draft pull requests and pull requests from forks are never auto-merged.
+- **The site deploys only after main builds.** Every build of `main` that passes is deployed to GitHub Pages; a failing build leaves the current site in place.
 
 ## Putting it on another website
 

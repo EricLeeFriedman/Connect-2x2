@@ -47,7 +47,7 @@
                 {
                     var col = c;
                     var owner = session.Board[row, col];
-                    <div class="@CellClass(row, col)" @onclick="() => SelectColumn(col)" @onmouseenter="() => hoverColumn = col">
+                    <div class="@CellClass(row, col)" @onclick="() => SelectCell(row, col)" @onmouseenter="() => HoverCell(row, col)">
                         @if (owner != Player.None)
                         {
                             <div class="@PieceClass(row, col, owner)" style="--fall: @(Board.Rows - row)"></div>
@@ -63,8 +63,7 @@
             @for (var c = 0; c < Board.Columns; c++)
             {
                 var col = c;
-                <div class="label col-label @(TargetCell()?.Column == col ? "hot" : "")"
-                     @onclick="() => SelectColumn(col)" @onmouseenter="() => hoverColumn = col">@Board.ColumnFactor(col)</div>
+                <div class="label col-label @(TargetCell()?.Column == col ? "hot" : "")">@Board.ColumnFactor(col)</div>
             }
         </div>
     </div>
@@ -89,7 +88,7 @@
     <details class="how-to">
         <summary>How to play</summary>
         <ol>
-            <li>Take turns picking a column. Your piece goes to the lowest open spot, just like Connect 4.</li>
+            <li>Take turns tapping an open spot. Only the lowest open spot in each column can take a piece, just like Connect 4.</li>
             <li>Multiply the number beside that row by the number under that column.</li>
             <li>Get it right and your piece drops in. Get it wrong and, depending on the setting, you lose your turn or try again.</li>
             <li>First to connect four in a row (across, up, or diagonal) wins.</li>
@@ -190,7 +189,7 @@
 
     private string CellClass(int row, int column)
     {
-        var classes = "cell";
+        var classes = IsPlayable(row, column) ? "cell playable" : "cell";
         if (!session.IsOver && TargetCell()?.Column == column)
         {
             classes += " col-hot";
@@ -219,6 +218,20 @@
         }
 
         return classes;
+    }
+
+    /// <summary>Only the lowest open spot in each column can take a piece, so only those spots respond.</summary>
+    private bool IsPlayable(int row, int column) =>
+        !session.IsOver && session.Pending is null && session.Board.LowestEmptyRow(column) == row;
+
+    private void HoverCell(int row, int column) => hoverColumn = IsPlayable(row, column) ? (int?)column : null;
+
+    private void SelectCell(int row, int column)
+    {
+        if (IsPlayable(row, column))
+        {
+            SelectColumn(column);
+        }
     }
 
     private void SelectColumn(int column)
