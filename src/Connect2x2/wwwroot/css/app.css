@@ -192,6 +192,10 @@ button,
     color: var(--bad);
 }
 
+.feedback.warn {
+    color: #b45309;
+}
+
 .feedback.info {
     color: var(--muted);
 }
@@ -254,6 +258,7 @@ button,
 
 .col-label {
     padding: 4px 0;
+    cursor: pointer;
 }
 
 .label.hot {
@@ -269,24 +274,86 @@ button,
     position: relative;
     aspect-ratio: 1;
     border-radius: 50%;
-    background: var(--hole);
+    /* Empty holes you can't play yet are dimmed so the playable ones stand out. */
+    background: #a9bbec;
     box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.35);
 }
 
+/* The lowest open spot in each column: bright, ringed in the current player's color, gently pulsing. */
 .cell.playable {
     cursor: pointer;
-}
-
-.cell.col-hot {
     background: #ffffff;
+    --glow: var(--red);
+    box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2), 0 0 0 3px var(--glow);
+    animation: glow 1.6s ease-in-out infinite;
 }
 
-.cell.target.red {
-    box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.25), 0 0 0 3px var(--red);
+.cell.playable.yellow {
+    --glow: var(--yellow);
+}
+
+.cell.playable:hover,
+.cell.target {
+    transform: scale(1.06);
+    animation: none;
+    box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2), 0 0 0 4px var(--glow, var(--red)), 0 0 14px 4px var(--glow, var(--red));
 }
 
 .cell.target.yellow {
-    box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.25), 0 0 0 3px var(--yellow);
+    --glow: var(--yellow);
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2), 0 0 0 3px var(--glow), 0 0 0 0 transparent;
+    }
+
+    50% {
+        box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2), 0 0 0 3px var(--glow), 0 0 12px 3px var(--glow);
+    }
+}
+
+/* Shown on the spot a player should tap after tapping somewhere a piece can't go. */
+.nudge-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 4px solid #fff;
+    pointer-events: none;
+    animation: nudge 0.6s ease-out 3;
+}
+
+@keyframes nudge {
+    from {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    to {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
+.instructions {
+    margin: 6px auto 0;
+    max-width: 30em;
+    font-size: 0.95rem;
+    color: var(--ink);
+}
+
+.glow-sample {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    background: #fff;
+    vertical-align: -0.15em;
+    box-shadow: 0 0 0 2px var(--red), 0 0 6px 2px var(--red);
+}
+
+.glow-sample.yellow {
+    box-shadow: 0 0 0 2px var(--yellow-dark), 0 0 6px 2px var(--yellow);
 }
 
 .hint {
