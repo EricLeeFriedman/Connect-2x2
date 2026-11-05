@@ -24,7 +24,11 @@ For live reload while editing, use `dotnet watch --project src/Connect2x2` inste
 - **Wrong answer?** Choose under the board: *Lose your turn* (the answer is shown and play passes on) or *Keep trying*.
 - Win by connecting four across, up, or diagonally. Scores and "facts right" carry over between games, and the starting player alternates.
 
-## Putting it on a website later
+## Play it online
+
+Every push to `main` deploys the game to GitHub Pages at **https://ericleefriedman.github.io/Connect-2x2/** (one-time setup: repo Settings → Pages → Source: *GitHub Actions*). It works on phones, tablets, and computers.
+
+## Putting it on another website
 
 ```sh
 dotnet publish src/Connect2x2 -c Release -o publish
