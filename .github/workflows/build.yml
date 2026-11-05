@@ -48,13 +48,6 @@ jobs:
             sed -i "s|<base href=\"/\" />|<base href=\"$SITE_ROOT/$game/\" />|" "site-out/$game/index.html"
             grep -q "<base href=\"$SITE_ROOT/$game/\" />" "site-out/$game/index.html"
           done
-      - name: Browser smoke test (temporary)
-        if: github.event_name == 'pull_request'
-        run: |
-          mkdir -p /tmp/serve && cp -r site-out /tmp/serve/Connect-2x2
-          (cd /tmp/serve && python3 -m http.server 8080 >/dev/null 2>&1 &)
-          cd .github/smoke && npm init -y >/dev/null && npm i --no-save playwright-core@1.48.2 >/dev/null
-          node smoke.mjs
       # On pull requests, keep the built site so it can be downloaded and tried before merging.
       - if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
