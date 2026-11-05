@@ -36,6 +36,13 @@
         {
             <button type="button" class="primary" @onclick="NewGame">Play again</button>
         }
+        else
+        {
+            <p class="instructions">
+                Pieces stack up from the bottom, so you can only play a <span class="glow-sample @Css(session.CurrentPlayer)"></span> glowing spot.
+                Tap one, then multiply its row number by its column number.
+            </p>
+        }
     </section>
 
     <div class="board-frame">
@@ -49,14 +56,19 @@
                 {
                     var col = c;
                     var owner = session.Board[row, col];
-                    <div class="@CellClass(row, col)" @onclick="() => SelectCell(row, col)" @onmouseenter="() => HoverCell(row, col)">
+                    <div class="@CellClass(row, col)" @onclick="() => SelectCell(row, col)" @onmouseenter="() => HoverCell(row, col)"
+                         aria-label="@CellLabel(row, col)">
                         @if (owner != Player.None)
                         {
                             <div class="@PieceClass(row, col, owner)" style="--fall: @(Board.Rows - row)"></div>
                         }
-                        else if (TargetCell() == new Cell(row, col))
+                        else if (IsPlayable(row, col) || TargetCell() == new Cell(row, col))
                         {
                             <span class="hint">@Board.RowFactor(row)×@Board.ColumnFactor(col)</span>
+                        }
+                        @if (nudgeCell == new Cell(row, col))
+                        {
+                            <span class="nudge-ring" @key="nudgeCount"></span>
                         }
                     </div>
                 }
@@ -65,7 +77,7 @@
             @for (var c = 0; c < Board.Columns; c++)
             {
                 var col = c;
-                <div class="label col-label @(TargetCell()?.Column == col ? "hot" : "")">@Board.ColumnFactor(col)</div>
+                <div class="label col-label @(TargetCell()?.Column == col ? "hot" : "")" @onclick="() => Nudge(col)">@Board.ColumnFactor(col)</div>
             }
         </div>
     </div>
@@ -87,15 +99,15 @@
         <button type="button" class="secondary" @onclick="NewGame">New game</button>
     </section>
 
-    <details class="how-to">
+    <details class="how-to" open>
         <summary>How to play</summary>
         <ol>
-            <li>Take turns tapping an open spot. Only the lowest open spot in each column can take a piece, just like Connect 4.</li>
-            <li>Multiply the number beside that row by the number under that column.</li>
-            <li>Get it right and your piece drops in. Get it wrong and, depending on the setting, you lose your turn or try again.</li>
-            <li>First to connect four in a row (across, up, or diagonal) wins.</li>
+            <li><strong>Find a glowing spot.</strong> Pieces stack up from the bottom like real Connect 4, so each column has just one spot you can play: the lowest empty one. Those spots glow in your color and show their multiplication.</li>
+            <li><strong>Tap it and answer.</strong> Multiply the row number (on the left) by the column number (along the bottom), for example 7 × 9 = 63.</li>
+            <li><strong>Right answer:</strong> your piece goes in. <strong>Wrong answer:</strong> you lose your turn, or keep trying, whichever is picked above.</li>
+            <li><strong>Win</strong> by getting four of your pieces in a row: across, up and down, or diagonally.</li>
         </ol>
-        <p>Keyboard: arrow keys pick a column, Enter drops. In a question, type the number and press Enter, or Esc to pick again.</p>
+        <p>Keyboard: arrow keys pick a column, Enter chooses it. In a question, type the number and press Enter, or Esc to pick again.</p>
     </details>
 </main>
 
@@ -141,6 +153,8 @@
     private readonly GameSession session = new();
 
     private int? hoverColumn;
+    private Cell? nudgeCell;
+    private int nudgeCount;
     private string answerText = "";
     private string? feedback;
     private string feedbackKind = "";
@@ -169,7 +183,7 @@
             return "The board is full. It's a draw!";
         }
 
-        return $"{Name(session.CurrentPlayer)}'s turn: pick a column.";
+        return $"{Name(session.CurrentPlayer)}'s turn: tap a glowing spot.";
     }
 
     /// <summary>The spot being asked about, or the spot the hovered column would land on.</summary>
@@ -191,7 +205,7 @@
 
     private string CellClass(int row, int column)
     {
-        var classes = IsPlayable(row, column) ? "cell playable" : "cell";
+        var classes = IsPlayable(row, column) ? "cell playable " + Css(session.CurrentPlayer) : "cell";
         if (!session.IsOver && TargetCell()?.Column == column)
         {
             classes += " col-hot";
@@ -232,8 +246,52 @@
     {
         if (IsPlayable(row, column))
         {
+            nudgeCell = null;
             SelectColumn(column);
         }
+        else
+        {
+            Nudge(column);
+        }
+    }
+
+    /// <summary>
+    /// A tap somewhere a piece can't go: say why, and flash the spot in that column that can be played.
+    /// </summary>
+    private void Nudge(int column)
+    {
+        if (session.IsOver || session.Pending is not null)
+        {
+            return;
+        }
+
+        feedbackKind = "warn";
+        var row = session.Board.LowestEmptyRow(column);
+        if (row is int r)
+        {
+            nudgeCell = new Cell(r, column);
+            nudgeCount++;
+            hoverColumn = column;
+            feedback = $"You can't go there. Pieces stack from the bottom, so in this column tap the glowing {Board.RowFactor(r)} × {Board.ColumnFactor(column)} spot.";
+        }
+        else
+        {
+            nudgeCell = null;
+            feedback = "That column is full. Tap a glowing spot in another column.";
+        }
+    }
+
+    private string CellLabel(int row, int column)
+    {
+        var owner = session.Board[row, column];
+        if (owner != Player.None)
+        {
+            return $"{Name(owner)} piece";
+        }
+
+        return IsPlayable(row, column)
+            ? $"Open spot, {Board.RowFactor(row)} times {Board.ColumnFactor(column)}"
+            : "Empty, not playable yet";
     }
 
     private void SelectColumn(int column)
@@ -246,6 +304,7 @@
         hoverColumn = column;
         if (session.TrySelectColumn(column))
         {
+            nudgeCell = null;
             answerText = "";
             questionFeedback = null;
             wrongTries = 0;
@@ -365,6 +424,7 @@
     private void NewGame()
     {
         session.NewGame();
+        nudgeCell = null;
         feedback = $"New game! {Name(session.CurrentPlayer)} goes first.";
         feedbackKind = "info";
         hoverColumn = null;
