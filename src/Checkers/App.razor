@@ -13,8 +13,8 @@
                 <span class="chip @Css(player)"></span>
                 <div class="score-text">
                     <span class="score-name">@Name(player)</span>
-                    <span class="score-facts">@session.Board.Count(player) pieces left</span>
-                    <span class="score-facts">@session.CorrectAnswers[player] / @session.Attempts[player] facts right</span>
+                    <span class="score-facts">@session.Board.Count(player) left</span>
+                    <span class="score-facts">@session.CorrectAnswers[player]/@session.Attempts[player] right</span>
                 </div>
                 <span class="score-wins" title="Games won">@session.Wins[player]</span>
             </div>
@@ -449,7 +449,7 @@
                 focusQuestion = true;
                 break;
             case AnswerResult.WrongTurnLost:
-                feedback = $"Not quite: {fact}. Turn passes to {Name(GameSession.Opponent(mover))}.";
+                feedback = $"Not quite: {fact}.";
                 feedbackKind = "bad";
                 break;
         }
