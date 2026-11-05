@@ -2,11 +2,18 @@ name: Build
 
 # Builds every pull request and every push to main.
 # On main, the site is deployed to GitHub Pages only after the build job passes.
+#
+# The site is laid out as:
+#   /<repo>/             landing page (site/index.html)
+#   /<repo>/connect2x2/  Connect 2x2
+#   /<repo>/checkers/    Times-Table Checkers
 
 on:
   push:
     branches: [main]
   pull_request:
+    # ready_for_review: a draft that is marked ready gets built, so it can auto-merge.
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -20,15 +27,34 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet publish src/Connect2x2 -c Release -o publish
+      - run: dotnet publish src/Connect2x2 -c Release -o publish/connect2x2
+      - run: dotnet publish src/Checkers -c Release -o publish/checkers
+      - name: Check the checkers rules
+        run: dotnet run --project tests/Checkers.Tests -c Release
 
-      # Pages serves the site from /<repo-name>/, so point the app's base path there.
-      - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: sed -i 's|<base href="/" />|<base href="/${{ github.event.repository.name }}/" />|' publish/wwwroot/index.html
+      # Pages serves the site from /<repo-name>/, so each game's base path is /<repo-name>/<game>/.
+      - name: Put the landing page and both games together
+        env:
+          SITE_ROOT: /${{ github.event.repository.name }}
+        run: |
+          mkdir -p site-out
+          cp site/index.html site-out/index.html
+          for game in connect2x2 checkers; do
+            cp -r "publish/$game/wwwroot" "site-out/$game"
+            sed -i "s|<base href=\"/\" />|<base href=\"$SITE_ROOT/$game/\" />|" "site-out/$game/index.html"
+            grep -q "<base href=\"$SITE_ROOT/$game/\" />" "site-out/$game/index.html"
+          done
+      # On pull requests, keep the built site so it can be downloaded and tried before merging.
+      - if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-preview
+          path: site-out
+          retention-days: 7
       - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: publish/wwwroot
+          path: site-out
 
   deploy:
     needs: build

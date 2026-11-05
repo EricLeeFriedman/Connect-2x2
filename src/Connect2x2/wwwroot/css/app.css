@@ -353,6 +353,18 @@ button,
     }
 }
 
+/* ---------- Back link ---------- */
+
+.back a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.back a:hover {
+    text-decoration: underline;
+}
+
 /* ---------- Options ---------- */
 
 .options {
