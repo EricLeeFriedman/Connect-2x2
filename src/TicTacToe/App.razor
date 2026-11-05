@@ -1,0 +1,360 @@
+<main class="game">
+    <nav class="back"><a href="../">← All math games</a></nav>
+
+    <header class="title">
+        <h1>Times-Table <span class="nowrap"><span class="x-text">Tic</span>-<span class="o-text">Tac</span>-Toe</span></h1>
+        <p>Every square has a fact. Answer it to claim the square.</p>
+    </header>
+
+    <section class="scoreboard" aria-label="Score">
+        @foreach (var player in Players)
+        {
+            <div class="score @Css(player) @(IsActive(player) ? "active" : "")">
+                <span class="chip @Css(player)">@Name(player)</span>
+                <div class="score-text">
+                    <span class="score-name">Player @Name(player)</span>
+                    <span class="score-facts">@session.CorrectAnswers[player]/@session.Attempts[player] right</span>
+                </div>
+                <span class="score-wins" title="Games won">@session.Wins[player]</span>
+            </div>
+        }
+    </section>
+
+    <section class="status @(session.IsOver ? "over" : "")" aria-live="polite">
+        @if (!string.IsNullOrEmpty(feedback))
+        {
+            <p class="feedback @feedbackKind">@feedback</p>
+        }
+        <p class="turn">@StatusText()</p>
+        @if (session.IsOver)
+        {
+            <button type="button" class="primary" @onclick="NewGame">Play again</button>
+        }
+    </section>
+
+    <div class="board-frame">
+        <div class="board size-@(session.Size) @(session.IsOver ? "over" : "")" role="grid" aria-label="Tic-tac-toe board"
+             style="--n: @session.Size">
+            @foreach (var cell in session.Board.Cells())
+            {
+                var mark = session.Board[cell];
+                <button type="button" class="@CellClass(cell, mark)" aria-label="@CellLabel(cell, mark)"
+                        disabled="@(mark != Mark.None || session.IsOver)" @onclick="() => Tap(cell)">
+                    @if (mark == Mark.X)
+                    {
+                        <svg class="mark x" viewBox="0 0 100 100" aria-hidden="true">
+                            <line x1="24" y1="24" x2="76" y2="76" />
+                            <line x1="76" y1="24" x2="24" y2="76" />
+                        </svg>
+                    }
+                    else if (mark == Mark.O)
+                    {
+                        <svg class="mark o" viewBox="0 0 100 100" aria-hidden="true">
+                            <circle cx="50" cy="50" r="27" />
+                        </svg>
+                    }
+                    else
+                    {
+                        var fact = session.Facts[cell];
+                        <span class="fact" @key="fact">@fact.Left<span class="times">×</span>@fact.Right</span>
+                    }
+                </button>
+            }
+        </div>
+    </div>
+
+    <section class="options">
+        <fieldset>
+            <legend>Board</legend>
+            <label>
+                <input type="radio" name="size" checked="@(session.Size == Board.SmallSize)"
+                       @onchange="() => ChangeSize(Board.SmallSize)" />
+                3 × 3
+            </label>
+            <label>
+                <input type="radio" name="size" checked="@(session.Size == Board.LargeSize)"
+                       @onchange="() => ChangeSize(Board.LargeSize)" />
+                4 × 4
+            </label>
+        </fieldset>
+        <fieldset>
+            <legend>Facts up to</legend>
+            @foreach (var limit in GameSession.FactLimits)
+            {
+                <label>
+                    <input type="radio" name="facts" checked="@(session.HighestFactor == limit)"
+                           @onchange="() => ChangeFacts(limit)" />
+                    @limit × @limit
+                </label>
+            }
+        </fieldset>
+        <fieldset>
+            <legend>Wrong answer?</legend>
+            <label>
+                <input type="radio" name="rule" checked="@(session.Rule == WrongAnswerRule.LoseTurn)"
+                       @onchange="() => session.Rule = WrongAnswerRule.LoseTurn" />
+                Lose your turn
+            </label>
+            <label>
+                <input type="radio" name="rule" checked="@(session.Rule == WrongAnswerRule.TryAgain)"
+                       @onchange="() => session.Rule = WrongAnswerRule.TryAgain" />
+                Keep trying
+            </label>
+        </fieldset>
+        <button type="button" class="secondary" @onclick="NewGame">New game</button>
+    </section>
+
+    <details class="how-to">
+        <summary>How to play</summary>
+        <ol>
+            <li>Two players share the device. X and O take turns, and the starting player swaps each game.</li>
+            <li>Tap an open square and answer the times-table fact in it. Get it right and the square is yours.</li>
+            <li>Get it wrong and, depending on the setting, you lose your turn or try again. A missed square gets a new fact.</li>
+            <li>On 3 × 3, get three in a row (across, down, or corner to corner) to win. On 4 × 4 you need four in a row.</li>
+            <li>If every square is taken and nobody has a line, it's a draw.</li>
+        </ol>
+        <p>Keyboard: Tab to a square and press Enter to pick it. In a question, type the number and press Enter, or Esc to pick again.</p>
+    </details>
+</main>
+
+@if (session.Pending is not null && session.PendingFact is Fact question)
+{
+    <div class="overlay" @onclick="CancelQuestion">
+        <div class="question-card @Css(session.CurrentPlayer)" role="dialog" aria-modal="true" aria-label="Multiplication question"
+             tabindex="-1" @ref="questionRef" @onkeydown="OnQuestionKeyDown" @onclick:stopPropagation="true">
+            <p class="question-who">
+                <span class="chip small @Css(session.CurrentPlayer)">@Name(session.CurrentPlayer)</span>
+                Player @(Name(session.CurrentPlayer))'s turn
+            </p>
+            <p class="equation">
+                <span>@question.Left</span>
+                <span class="op">×</span>
+                <span>@question.Right</span>
+                <span class="op">=</span>
+                <span class="answer-box @(answerText.Length == 0 ? "empty" : "") @(wrongTries > 0 ? "wrong" : "")" @key="wrongTries">
+                    @(answerText.Length == 0 ? "?" : answerText)
+                </span>
+            </p>
+            <p class="question-feedback">@questionFeedback</p>
+
+            <div class="numpad">
+                @foreach (var digit in "123456789")
+                {
+                    <button type="button" tabindex="-1" @onmousedown:preventDefault="true" @onclick="() => AppendDigit(digit)">@digit</button>
+                }
+                <button type="button" tabindex="-1" class="key-back" aria-label="Delete" @onmousedown:preventDefault="true" @onclick="Backspace">⌫</button>
+                <button type="button" tabindex="-1" @onmousedown:preventDefault="true" @onclick="() => AppendDigit('0')">0</button>
+                <button type="button" tabindex="-1" class="key-enter" aria-label="Check answer" @onmousedown:preventDefault="true" @onclick="Submit">✓</button>
+            </div>
+
+            <button type="button" class="link" tabindex="-1" @onmousedown:preventDefault="true" @onclick="CancelQuestion">
+                Pick a different square
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly Mark[] Players = [Mark.X, Mark.O];
+    private const int MaxAnswerDigits = 3;
+
+    private readonly GameSession session = new();
+
+    private string answerText = "";
+    private string? feedback;
+    private string feedbackKind = "";
+    private string? questionFeedback;
+    private int wrongTries;
+    private bool focusQuestion;
+    private ElementReference questionRef;
+
+    private static string Name(Mark mark) => mark == Mark.X ? "X" : "O";
+
+    private static string Css(Mark mark) => mark == Mark.X ? "x" : "o";
+
+    private bool IsActive(Mark mark) => !session.IsOver && session.CurrentPlayer == mark;
+
+    private string StatusText()
+    {
+        if (session.Winner != Mark.None)
+        {
+            return $"{session.Size} in a row! Player {Name(session.Winner)} wins!";
+        }
+
+        if (session.IsDraw)
+        {
+            return "Every square is taken. It's a draw!";
+        }
+
+        return $"Player {Name(session.CurrentPlayer)}'s turn: pick a square.";
+    }
+
+    private string CellClass(Cell cell, Mark mark)
+    {
+        var classes = "cell";
+        if (mark == Mark.None)
+        {
+            classes += session.IsOver ? " open" : " open " + Css(session.CurrentPlayer) + "-turn";
+        }
+        else
+        {
+            classes += " claimed";
+        }
+
+        if (session.Pending == cell)
+        {
+            classes += " target";
+        }
+
+        if (session.IsOnWinningLine(cell))
+        {
+            classes += " win";
+        }
+        else if (session.IsOver && session.Winner != Mark.None)
+        {
+            classes += " faded";
+        }
+
+        if (session.LastClaimed == cell)
+        {
+            classes += " last";
+        }
+
+        return classes;
+    }
+
+    private string CellLabel(Cell cell, Mark mark)
+    {
+        var where = $"Row {cell.Row + 1}, column {cell.Column + 1}";
+        if (mark != Mark.None)
+        {
+            return $"{where}: {Name(mark)}";
+        }
+
+        var fact = session.Facts[cell];
+        return $"{where}: {fact.Left} times {fact.Right}";
+    }
+
+    private void Tap(Cell cell)
+    {
+        if (session.Choose(cell))
+        {
+            answerText = "";
+            questionFeedback = null;
+            wrongTries = 0;
+            focusQuestion = true;
+        }
+    }
+
+    private void OnQuestionKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key.Length == 1 && char.IsAsciiDigit(e.Key[0]))
+        {
+            AppendDigit(e.Key[0]);
+        }
+        else if (e.Key == "Backspace" || e.Key == "Delete")
+        {
+            Backspace();
+        }
+        else if (e.Key == "Enter")
+        {
+            Submit();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelQuestion();
+        }
+    }
+
+    private void AppendDigit(char digit)
+    {
+        if (answerText.Length < MaxAnswerDigits)
+        {
+            answerText += digit;
+        }
+
+        questionFeedback = null;
+    }
+
+    private void Backspace()
+    {
+        if (answerText.Length > 0)
+        {
+            answerText = answerText[..^1];
+        }
+    }
+
+    private void Submit()
+    {
+        if (session.PendingFact is not Fact question)
+        {
+            return;
+        }
+
+        if (answerText.Length == 0)
+        {
+            questionFeedback = "Type your answer first.";
+            return;
+        }
+
+        var answer = int.Parse(answerText);
+        var fact = $"{question.Left} × {question.Right} = {question.Product}";
+
+        switch (session.SubmitAnswer(answer))
+        {
+            case AnswerResult.Correct:
+                feedback = $"Correct! {fact}";
+                feedbackKind = "good";
+                break;
+            case AnswerResult.WrongTryAgain:
+                wrongTries++;
+                questionFeedback = $"{answer} isn't it. Try again!";
+                answerText = "";
+                focusQuestion = true;
+                break;
+            case AnswerResult.WrongTurnLost:
+                feedback = $"Not quite: {fact}. That square gets a new fact.";
+                feedbackKind = "bad";
+                break;
+        }
+    }
+
+    private void CancelQuestion() => session.CancelQuestion();
+
+    private void NewGame()
+    {
+        session.NewGame();
+        feedback = $"New game! Player {Name(session.CurrentPlayer)} goes first.";
+        feedbackKind = "info";
+    }
+
+    private void ChangeSize(int size)
+    {
+        session.SetSize(size);
+        feedback = $"New {size} × {size} game! Get {size} in a row. Player {Name(session.CurrentPlayer)} goes first.";
+        feedbackKind = "info";
+    }
+
+    private void ChangeFacts(int highest)
+    {
+        session.SetHighestFactor(highest);
+        feedback = $"New game with facts up to {highest} × {highest}. Player {Name(session.CurrentPlayer)} goes first.";
+        feedbackKind = "info";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusQuestion && session.Pending is not null)
+        {
+            focusQuestion = false;
+            try
+            {
+                await questionRef.FocusAsync();
+            }
+            catch (Exception)
+            {
+                // The card was not on screen yet; focus is only a convenience.
+            }
+        }
+    }
+}

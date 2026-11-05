@@ -1,11 +1,12 @@
 # Math Games
 
-Two classic board games for practising times tables, each at its own link:
+Three classic board games for practising times tables, each at its own link:
 
 - **Connect 2×2**: https://ericleefriedman.github.io/Connect-2x2/connect2x2/
 - **Times-Table Checkers**: https://ericleefriedman.github.io/Connect-2x2/checkers/
+- **Times-Table Tic-Tac-Toe**: https://ericleefriedman.github.io/Connect-2x2/tictactoe/
 
-The site root (https://ericleefriedman.github.io/Connect-2x2/) is a small landing page that links to both. The links follow the repository name, so if the repository is renamed (for example to `math-games`) the games move to `https://ericleefriedman.github.io/math-games/connect2x2/` and `.../checkers/` on the next deploy, with no code changes.
+The site root (https://ericleefriedman.github.io/Connect-2x2/) is a small landing page that links to all three. The links follow the repository name, so if the repository is renamed (for example to `math-games`) the games move to `https://ericleefriedman.github.io/math-games/connect2x2/` and `.../checkers/` and `.../tictactoe/` on the next deploy, with no code changes.
 
 ## Connect 2×2
 
@@ -24,6 +25,16 @@ Standard 8 × 8 checkers for two players on one device. Every dark square shows 
 - No two squares show the same fact at once. A square that is left empty (moved off or captured) gets a new fact, never the one it had, and **every 5 turns all the open squares get new facts**. A meter above the board counts down.
 - Win by capturing every enemy piece or leaving them no moves. 50 turns in a row with no capture and no new king is a draw.
 
+## Times-Table Tic-Tac-Toe
+
+Tic-tac-toe for two players on one device. Every square shows a multiplication fact, and you claim a square by answering it.
+
+- Tap an open square, answer its fact, and the square is yours. A wrong answer loses the turn or lets you try again (the same setting as the other games), and a missed square gets a new fact, since the answer was just shown.
+- **3 × 3** (three in a row) is the default. **4 × 4** needs four in a row.
+- **Facts up to** 5 × 5, 10 × 10, or 12 × 12 (factors start at 2), so younger kids can play with easier facts.
+- No two squares share a fact (on 4 × 4 with facts up to 5 there aren't enough to go round, so a few repeat).
+- Scores, "facts right", and the starting player carry over between games like the others. Changing the board or the facts starts a new game.
+
 ## Run it locally
 
 1. Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (`dotnet --version` should print `10.x`).
@@ -32,13 +43,14 @@ Standard 8 × 8 checkers for two players on one device. Every dark square shows 
    ```sh
    dotnet run --project src/Connect2x2   # http://localhost:5222
    dotnet run --project src/Checkers     # http://localhost:5223
+   dotnet run --project src/TicTacToe    # http://localhost:5224
    ```
 
 3. The browser usually opens on its own.
 
 For live reload while editing, use `dotnet watch --project src/Checkers` (or `src/Connect2x2`) instead.
 
-The checkers rules have a small self-checking program (no test framework): `dotnet run --project tests/Checkers.Tests`. CI runs it on every build.
+The checkers and tic-tac-toe rules each have a small self-checking program (no test framework): `dotnet run --project tests/Checkers.Tests` and `dotnet run --project tests/TicTacToe.Tests`. CI runs both on every build.
 
 ## How to play Connect 2×2
 
@@ -58,6 +70,7 @@ The checkers rules have a small self-checking program (no test framework): `dotn
 ```sh
 dotnet publish src/Connect2x2 -c Release -o publish/connect2x2
 dotnet publish src/Checkers -c Release -o publish/checkers
+dotnet publish src/TicTacToe -c Release -o publish/tictactoe
 ```
 
 Everything in each `publish/<game>/wwwroot` is plain static files (HTML, CSS, JS, and WebAssembly), so it can be uploaded to any static host: GitHub Pages, Netlify, Azure Static Web Apps, or a regular web server. If the site lives in a sub-folder (for example `https://example.com/connect/`), change `<base href="/" />` in `wwwroot/index.html` to that folder (`<base href="/connect/" />`).
@@ -65,7 +78,7 @@ Everything in each `publish/<game>/wwwroot` is plain static files (HTML, CSS, JS
 ## Project layout
 
 ```
-site/index.html          landing page linking to both games
+site/index.html          landing page linking to the games
 src/Connect2x2/
   Game/Board.cs          grid, gravity, and four-in-a-row detection
   Game/GameSession.cs    turns, questions, wrong-answer rule, scores
@@ -78,5 +91,12 @@ src/Checkers/
   Game/GameSession.cs    turns, multi-jumps, must-jump rule, the 5-turn shuffle, scores
   App.razor              the page
   wwwroot/css/app.css    all styling and animations
+src/TicTacToe/
+  Game/Board.cs          3 x 3 or 4 x 4 grid and line detection
+  Game/Facts.cs          the fact in each square
+  Game/GameSession.cs    turns, questions, wrong-answer rule, board size, fact range, scores
+  App.razor              the page
+  wwwroot/css/app.css    all styling and animations
 tests/Checkers.Tests/    rule checks for the checkers game
+tests/TicTacToe.Tests/   rule checks for the tic-tac-toe game
 ```

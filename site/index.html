@@ -28,7 +28,7 @@
         }
 
         main {
-            max-width: 760px;
+            max-width: 1040px;
             margin: 0 auto;
             padding: 32px 16px 48px;
         }
@@ -99,6 +99,10 @@
         .checkers .play {
             background: #2f6b4f;
         }
+
+        .tictactoe .play {
+            background: #6d28d9;
+        }
     </style>
 </head>
 
@@ -145,6 +149,29 @@
                 </svg>
                 <h2>Times-Table Checkers</h2>
                 <p>Every dark square shows a fact. Answer it to move there, and watch the facts shuffle every few turns.</p>
+                <span class="play">Play</span>
+            </a>
+            <a class="game tictactoe" href="tictactoe/">
+                <svg viewBox="0 0 140 100" aria-hidden="true">
+                    <rect width="140" height="100" fill="#6d28d9" />
+                    <g fill="#faf5ff">
+                        <rect x="25" y="5" width="28" height="28" rx="4" /><rect x="56" y="5" width="28" height="28" rx="4" /><rect x="87" y="5" width="28" height="28" rx="4" />
+                        <rect x="25" y="36" width="28" height="28" rx="4" /><rect x="56" y="36" width="28" height="28" rx="4" /><rect x="87" y="36" width="28" height="28" rx="4" />
+                        <rect x="25" y="67" width="28" height="28" rx="4" /><rect x="56" y="67" width="28" height="28" rx="4" /><rect x="87" y="67" width="28" height="28" rx="4" />
+                    </g>
+                    <g stroke="#e11d48" stroke-width="4" stroke-linecap="round">
+                        <path d="M32 12l14 14M46 12l-14 14" /><path d="M63 43l14 14M77 43l-14 14" />
+                    </g>
+                    <g fill="none" stroke="#0284c7" stroke-width="4">
+                        <circle cx="101" cy="19" r="8" /><circle cx="39" cy="81" r="8" />
+                    </g>
+                    <g fill="#3b0764" font-family="sans-serif" font-weight="bold" font-size="8" text-anchor="middle">
+                        <text x="70" y="22">7×8</text><text x="39" y="53">6×9</text><text x="101" y="53">4×12</text>
+                        <text x="70" y="84">9×7</text><text x="101" y="84">8×6</text>
+                    </g>
+                </svg>
+                <h2>Times-Table <span style="white-space: nowrap">Tic-Tac-Toe</span></h2>
+                <p>Answer a square's fact to claim it. Three in a row wins, or four on the bigger board.</p>
                 <span class="play">Play</span>
             </a>
         </div>
