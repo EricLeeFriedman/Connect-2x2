@@ -1,0 +1,501 @@
+<main class="game">
+    <nav class="back"><a href="../">← All math games</a></nav>
+
+    <header class="title">
+        <h1>Times-Table <span class="red-text">Check</span><span class="black-text">ers</span></h1>
+        <p>Every square has a fact. Answer it to move there.</p>
+    </header>
+
+    <section class="scoreboard" aria-label="Score">
+        @foreach (var player in Players)
+        {
+            <div class="score @Css(player) @(IsActive(player) ? "active" : "")">
+                <span class="chip @Css(player)"></span>
+                <div class="score-text">
+                    <span class="score-name">@Name(player)</span>
+                    <span class="score-facts">@session.Board.Count(player) left</span>
+                    <span class="score-facts">@session.CorrectAnswers[player]/@session.Attempts[player] right</span>
+                </div>
+                <span class="score-wins" title="Games won">@session.Wins[player]</span>
+            </div>
+        }
+    </section>
+
+    <section class="status @(session.IsOver ? "over" : "")" aria-live="polite">
+        @if (!string.IsNullOrEmpty(feedback))
+        {
+            <p class="feedback @feedbackKind">@feedback</p>
+        }
+        <p class="turn">
+            @if (!session.IsOver)
+            {
+                <span class="chip small @Css(session.CurrentPlayer)"></span>
+            }
+            @StatusText()
+        </p>
+        @if (session.IsOver)
+        {
+            <button type="button" class="primary" @onclick="NewGame">Play again</button>
+        }
+        else if (session.CanEndTurnEarly)
+        {
+            <button type="button" class="secondary" @onclick="EndTurnEarly">Stop jumping, end turn</button>
+        }
+    </section>
+
+    <div class="shuffle-meter @(justShuffled ? "flash" : "")" @key="session.ShuffleCount">
+        @if (justShuffled)
+        {
+            <span>🔀 Every open square has a new fact!</span>
+        }
+        else
+        {
+            <span>🔀 New facts in <strong>@session.TurnsUntilShuffle</strong> @(session.TurnsUntilShuffle == 1 ? "turn" : "turns")</span>
+            <span class="pips" aria-hidden="true">
+                @for (var i = 0; i < GameSession.ShuffleEvery; i++)
+                {
+                    <span class="pip @(i < GameSession.ShuffleEvery - session.TurnsUntilShuffle ? "used" : "")"></span>
+                }
+            </span>
+        }
+    </div>
+
+    @{
+        var legal = session.LegalMoves();
+        var destinations = session.Selected is Square picked
+            ? legal.Where(m => m.From == picked).ToList()
+            : new List<Move>();
+    }
+
+    <div class="board-frame">
+        <div class="board" role="grid" aria-label="Checkers board">
+            @for (var r = 0; r < Board.Size; r++)
+            {
+                @for (var c = 0; c < Board.Size; c++)
+                {
+                    var square = new Square(r, c);
+                    if (!square.IsDark)
+                    {
+                        <div class="sq light" aria-hidden="true"></div>
+                        continue;
+                    }
+
+                    var piece = session.Board[square];
+                    var landing = destinations.Any(m => m.To == square);
+                    <button type="button" class="@SquareClass(square, piece, legal, destinations, landing)"
+                            aria-label="@SquareLabel(square, piece, landing)" @onclick="() => Tap(square)">
+                        @if (piece is Piece p)
+                        {
+                            <span class="@PieceClass(square, p)">
+                                @if (p.IsKing)
+                                {
+                                    <span class="crown">♛</span>
+                                }
+                            </span>
+                        }
+                        else
+                        {
+                            var fact = session.Facts[square];
+                            <span class="fact" @key="fact">@fact.Left<span class="times">×</span>@fact.Right</span>
+                        }
+                    </button>
+                }
+            }
+        </div>
+    </div>
+
+    <section class="options">
+        <fieldset>
+            <legend>Wrong answer?</legend>
+            <label>
+                <input type="radio" name="rule" checked="@(session.Rule == WrongAnswerRule.LoseTurn)"
+                       @onchange="() => session.Rule = WrongAnswerRule.LoseTurn" />
+                Lose your turn
+            </label>
+            <label>
+                <input type="radio" name="rule" checked="@(session.Rule == WrongAnswerRule.TryAgain)"
+                       @onchange="() => session.Rule = WrongAnswerRule.TryAgain" />
+                Keep trying
+            </label>
+        </fieldset>
+        <fieldset>
+            <legend>Jumps</legend>
+            <label>
+                <input type="checkbox" checked="@session.MustJump" @onchange="ToggleMustJump" />
+                Must jump when you can
+            </label>
+        </fieldset>
+        <button type="button" class="secondary" @onclick="NewGame">New game</button>
+    </section>
+
+    <details class="how-to">
+        <summary>How to play</summary>
+        <ol>
+            <li>Red starts at the bottom, Black at the top. Pieces only use the dark squares and move diagonally forward.</li>
+            <li>Tap one of your pieces (the glowing ones can move), then tap the square you want to move to.</li>
+            <li>Answer the times-table fact in that square. Get it right and your piece moves there. Get it wrong and, depending on the setting, you lose your turn or try again.</li>
+            <li>Jump over an enemy piece to capture it. If you land where you can jump again, keep going, answering a fact for each landing.</li>
+            <li>Reach the far side and your piece becomes a king ♛ that can move backwards too.</li>
+            <li>Every time a square is left empty it gets a new fact, and every @GameSession.ShuffleEvery turns all the open squares get new facts.</li>
+            <li>Capture every enemy piece, or leave them with no moves, to win. @GameSession.QuietTurnsForDraw turns in a row with no capture and no new king is a draw.</li>
+        </ol>
+        <p>Keyboard: Tab to a square and press Enter to pick it. In a question, type the number and press Enter, or Esc to pick again.</p>
+    </details>
+</main>
+
+@if (session.Pending is Move pending && session.PendingFact is Fact question)
+{
+    <div class="overlay" @onclick="CancelQuestion">
+        <div class="question-card @Css(session.CurrentPlayer)" role="dialog" aria-modal="true" aria-label="Multiplication question"
+             tabindex="-1" @ref="questionRef" @onkeydown="OnQuestionKeyDown" @onclick:stopPropagation="true">
+            <p class="question-who">
+                <span class="chip small @Css(session.CurrentPlayer)"></span>
+                @(Name(session.CurrentPlayer))'s @(pending.IsJump ? "jump" : "move")
+            </p>
+            <p class="equation">
+                <span>@question.Left</span>
+                <span class="op">×</span>
+                <span>@question.Right</span>
+                <span class="op">=</span>
+                <span class="answer-box @(answerText.Length == 0 ? "empty" : "") @(wrongTries > 0 ? "wrong" : "")" @key="wrongTries">
+                    @(answerText.Length == 0 ? "?" : answerText)
+                </span>
+            </p>
+            <p class="question-feedback">@questionFeedback</p>
+
+            <div class="numpad">
+                @foreach (var digit in "123456789")
+                {
+                    <button type="button" tabindex="-1" @onmousedown:preventDefault="true" @onclick="() => AppendDigit(digit)">@digit</button>
+                }
+                <button type="button" tabindex="-1" class="key-back" aria-label="Delete" @onmousedown:preventDefault="true" @onclick="Backspace">⌫</button>
+                <button type="button" tabindex="-1" @onmousedown:preventDefault="true" @onclick="() => AppendDigit('0')">0</button>
+                <button type="button" tabindex="-1" class="key-enter" aria-label="Check answer" @onmousedown:preventDefault="true" @onclick="Submit">✓</button>
+            </div>
+
+            <button type="button" class="link" tabindex="-1" @onmousedown:preventDefault="true" @onclick="CancelQuestion">
+                @(session.JumpingFrom is null ? "Pick a different move" : "Pick a different jump")
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly Side[] Players = [Side.Red, Side.Black];
+    private const int MaxAnswerDigits = 3;
+
+    private readonly GameSession session = new();
+
+    private string answerText = "";
+    private string? feedback;
+    private string feedbackKind = "";
+    private string? questionFeedback;
+    private int wrongTries;
+    private bool focusQuestion;
+    private bool justShuffled;
+    private ElementReference questionRef;
+
+    private static string Name(Side side) => side == Side.Red ? "Red" : "Black";
+
+    private static string Css(Side side) => side == Side.Red ? "red" : "black";
+
+    private bool IsActive(Side side) => !session.IsOver && session.CurrentPlayer == side;
+
+    private string StatusText()
+    {
+        if (session.Winner != Side.None)
+        {
+            var loser = GameSession.Opponent(session.Winner);
+            return session.Board.Count(loser) == 0
+                ? $"{Name(session.Winner)} captured every piece and wins!"
+                : $"{Name(loser)} has no moves left. {Name(session.Winner)} wins!";
+        }
+
+        if (session.IsDraw)
+        {
+            return $"{GameSession.QuietTurnsForDraw} turns with no captures. It's a draw!";
+        }
+
+        var name = Name(session.CurrentPlayer);
+        if (session.JumpingFrom is not null)
+        {
+            return $"{name}, keep jumping!";
+        }
+
+        if (session.Selected is not null)
+        {
+            return $"{name}: tap a highlighted square.";
+        }
+
+        return session.MustJump && session.HasJump()
+            ? $"{name}'s turn: you must jump!"
+            : $"{name}'s turn: pick a piece.";
+    }
+
+    private string SquareClass(Square square, Piece? piece, List<Move> legal, List<Move> destinations, bool landing)
+    {
+        var classes = "sq dark";
+        if (session.IsOver)
+        {
+            return classes;
+        }
+
+        if (piece is Piece p && p.Side == session.CurrentPlayer)
+        {
+            if (session.Selected == square)
+            {
+                classes += " selected";
+            }
+            else if (session.Selected is null && legal.Any(m => m.From == square))
+            {
+                classes += " movable";
+            }
+        }
+
+        if (landing)
+        {
+            classes += " landing " + Css(session.CurrentPlayer);
+            if (session.Pending is Move pendingMove && pendingMove.To == square)
+            {
+                classes += " target";
+            }
+        }
+        else if (piece is null && session.Selected is not null)
+        {
+            classes += " dim";
+        }
+
+        if (session.Pending is Move move && move.Captured == square)
+        {
+            classes += " doomed";
+        }
+
+        if (session.LastMove is Move last && last.From == square && piece is null)
+        {
+            classes += " was-here";
+        }
+
+        return classes;
+    }
+
+    private string PieceClass(Square square, Piece piece)
+    {
+        var classes = "piece " + Css(piece.Side);
+        if (piece.IsKing)
+        {
+            classes += " king";
+        }
+
+        if (session.LastMove?.To == square)
+        {
+            classes += " landed";
+        }
+
+        return classes;
+    }
+
+    private string SquareLabel(Square square, Piece? piece, bool landing)
+    {
+        var where = $"Row {square.Row + 1}, column {square.Column + 1}";
+        if (piece is Piece p)
+        {
+            return $"{where}: {Name(p.Side)} {(p.IsKing ? "king" : "piece")}";
+        }
+
+        var fact = session.Facts[square];
+        return $"{where}: {fact.Left} times {fact.Right}{(landing ? ", you can move here" : "")}";
+    }
+
+    private void Tap(Square square)
+    {
+        if (session.IsOver || session.Pending is not null)
+        {
+            return;
+        }
+
+        var piece = session.Board[square];
+        if (piece is Piece p && p.Side == session.CurrentPlayer)
+        {
+            if (session.JumpingFrom is not null)
+            {
+                if (session.JumpingFrom != square)
+                {
+                    ShowInfo("You're in the middle of a jump. Keep going with the same piece.");
+                }
+
+                return;
+            }
+
+            if (session.Selected == square)
+            {
+                session.Deselect();
+                return;
+            }
+
+            if (session.Select(square))
+            {
+                feedback = null;
+                return;
+            }
+
+            ShowInfo(session.MustJump && session.HasJump()
+                ? "You have a jump somewhere, and jumps come first. Look for the glowing piece."
+                : "That piece can't move right now. Try a glowing one.");
+            return;
+        }
+
+        if (piece is null && session.Selected is not null)
+        {
+            if (session.TryChooseDestination(square))
+            {
+                answerText = "";
+                questionFeedback = null;
+                wrongTries = 0;
+                focusQuestion = true;
+            }
+            else
+            {
+                ShowInfo("That piece can't reach that square. Pick a highlighted one.");
+            }
+
+            return;
+        }
+
+        if (piece is null)
+        {
+            ShowInfo("Pick one of your pieces first, then the square to move it to.");
+        }
+    }
+
+    private void ShowInfo(string message)
+    {
+        feedback = message;
+        feedbackKind = "info";
+    }
+
+    private void OnQuestionKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key.Length == 1 && char.IsAsciiDigit(e.Key[0]))
+        {
+            AppendDigit(e.Key[0]);
+        }
+        else if (e.Key == "Backspace" || e.Key == "Delete")
+        {
+            Backspace();
+        }
+        else if (e.Key == "Enter")
+        {
+            Submit();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelQuestion();
+        }
+    }
+
+    private void AppendDigit(char digit)
+    {
+        if (answerText.Length < MaxAnswerDigits)
+        {
+            answerText += digit;
+        }
+
+        questionFeedback = null;
+    }
+
+    private void Backspace()
+    {
+        if (answerText.Length > 0)
+        {
+            answerText = answerText[..^1];
+        }
+    }
+
+    private void Submit()
+    {
+        if (session.Pending is not Move move || session.PendingFact is not Fact question)
+        {
+            return;
+        }
+
+        if (answerText.Length == 0)
+        {
+            questionFeedback = "Type your answer first.";
+            return;
+        }
+
+        var answer = int.Parse(answerText);
+        var fact = $"{question.Left} × {question.Right} = {question.Product}";
+        var mover = session.CurrentPlayer;
+        var shufflesBefore = session.ShuffleCount;
+
+        var result = session.SubmitAnswer(answer);
+        justShuffled = session.ShuffleCount != shufflesBefore;
+
+        switch (result)
+        {
+            case AnswerResult.Correct:
+                feedback = move.IsJump ? $"Correct! {fact}. Captured!" : $"Correct! {fact}";
+                feedbackKind = "good";
+                break;
+            case AnswerResult.CorrectKeepJumping:
+                feedback = $"Correct! {fact}. Captured! You can jump again.";
+                feedbackKind = "good";
+                break;
+            case AnswerResult.WrongTryAgain:
+                wrongTries++;
+                questionFeedback = $"{answer} isn't it. Try again!";
+                answerText = "";
+                focusQuestion = true;
+                break;
+            case AnswerResult.WrongTurnLost:
+                feedback = $"Not quite: {fact}.";
+                feedbackKind = "bad";
+                break;
+        }
+    }
+
+    private void CancelQuestion() => session.CancelQuestion();
+
+    private void EndTurnEarly()
+    {
+        var shufflesBefore = session.ShuffleCount;
+        session.EndTurnEarly();
+        justShuffled = session.ShuffleCount != shufflesBefore;
+        feedback = $"Turn passes to {Name(session.CurrentPlayer)}.";
+        feedbackKind = "info";
+    }
+
+    private void ToggleMustJump(ChangeEventArgs e)
+    {
+        session.MustJump = e.Value is bool on && on;
+        if (session.Selected is not null && session.JumpingFrom is null && !session.CanMove(session.Selected.Value))
+        {
+            session.Deselect();
+        }
+    }
+
+    private void NewGame()
+    {
+        session.NewGame();
+        justShuffled = false;
+        feedback = $"New game! {Name(session.CurrentPlayer)} goes first.";
+        feedbackKind = "info";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusQuestion && session.Pending is not null)
+        {
+            focusQuestion = false;
+            try
+            {
+                await questionRef.FocusAsync();
+            }
+            catch (Exception)
+            {
+                // The card was not on screen yet; focus is only a convenience.
+            }
+        }
+    }
+}
