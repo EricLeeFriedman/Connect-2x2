@@ -12,7 +12,8 @@
             <div class="score @Css(player) @(IsActive(player) ? "active" : "")">
                 <span class="chip @Css(player)"></span>
                 <div class="score-text">
-                    <span class="score-name">@Name(player) <span class="score-pieces">· @session.Board.Count(player) left</span></span>
+                    <span class="score-name">@Name(player)</span>
+                    <span class="score-facts">@session.Board.Count(player) pieces left</span>
                     <span class="score-facts">@session.CorrectAnswers[player] / @session.Attempts[player] facts right</span>
                 </div>
                 <span class="score-wins" title="Games won">@session.Wins[player]</span>
@@ -45,18 +46,18 @@
     <div class="shuffle-meter @(justShuffled ? "flash" : "")" @key="session.ShuffleCount">
         @if (justShuffled)
         {
-            <span>🔀 All the open squares just got new facts!</span>
+            <span>🔀 Every open square has a new fact!</span>
         }
         else
         {
             <span>🔀 New facts in <strong>@session.TurnsUntilShuffle</strong> @(session.TurnsUntilShuffle == 1 ? "turn" : "turns")</span>
+            <span class="pips" aria-hidden="true">
+                @for (var i = 0; i < GameSession.ShuffleEvery; i++)
+                {
+                    <span class="pip @(i < GameSession.ShuffleEvery - session.TurnsUntilShuffle ? "used" : "")"></span>
+                }
+            </span>
         }
-        <span class="pips" aria-hidden="true">
-            @for (var i = 0; i < GameSession.ShuffleEvery; i++)
-            {
-                <span class="pip @(i < GameSession.ShuffleEvery - session.TurnsUntilShuffle ? "used" : "")"></span>
-            }
-        </span>
     </div>
 
     @{
@@ -223,12 +224,12 @@
 
         if (session.Selected is not null)
         {
-            return $"{name}: tap a highlighted square to move there.";
+            return $"{name}: tap a highlighted square.";
         }
 
         return session.MustJump && session.HasJump()
-            ? $"{name}'s turn: you have a jump, so you must take it."
-            : $"{name}'s turn: pick a piece to move.";
+            ? $"{name}'s turn: you must jump!"
+            : $"{name}'s turn: pick a piece.";
     }
 
     private string SquareClass(Square square, Piece? piece, List<Move> legal, List<Move> destinations, bool landing)

@@ -223,6 +223,7 @@ button,
 /* ---------- Shuffle meter ---------- */
 
 .shuffle-meter {
+    min-height: 2.6em;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -240,10 +241,10 @@ button,
 }
 
 .shuffle-meter.flash {
-    background: #fef3c7;
-    color: #92400e;
+    background: #f59e0b;
+    color: #ffffff;
     font-weight: bold;
-    animation: pop 0.3s ease-out;
+    animation: land 0.4s ease-out;
 }
 
 .pips {
@@ -255,7 +256,8 @@ button,
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #e5e7eb;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 2px #d1d5db;
 }
 
 .pip.used {
@@ -311,10 +313,10 @@ button,
 
 .fact {
     font-weight: bold;
-    font-size: clamp(0.62rem, 2.9vw, 1.15rem);
-    font-size: 3.7cqi;
+    font-size: clamp(0.6rem, 2.7vw, 1.05rem);
+    font-size: 3.2cqi;
     white-space: nowrap;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: #e7f5ec;
     animation: flip-in 0.35s ease-out;
     transition: opacity 0.15s;
@@ -348,7 +350,7 @@ button,
 
 .sq.landing .fact {
     color: #ffffff;
-    font-size: 4.1cqi;
+    font-size: 3.5cqi;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
@@ -412,11 +414,11 @@ button,
 
 @keyframes glow {
     from {
-        box-shadow: 0 0 0 2px rgba(253, 224, 71, 0.3), 0 3px 4px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 0 0 3px #fde047, 0 0 4px 2px rgba(253, 224, 71, 0.5);
     }
 
     to {
-        box-shadow: 0 0 0 3px #fde047, 0 0 12px 3px rgba(253, 224, 71, 0.7);
+        box-shadow: 0 0 0 4px #fde047, 0 0 14px 5px rgba(253, 224, 71, 0.85);
     }
 }
 
