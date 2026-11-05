@@ -1,0 +1,40 @@
+name: Auto-merge
+
+# When the Build workflow passes on a pull request, merge that pull request,
+# then start Build on main so the merged code is built and deployed.
+# (A merge made with the workflow token does not trigger push workflows by itself.)
+# Only pull requests from branches in this repository are merged, never forks.
+
+on:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the pull request that passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          pr=$(gh pr list --head "$HEAD_BRANCH" --state open --json number,headRefOid,isDraft \
+            --jq ".[] | select(.headRefOid == \"$HEAD_SHA\" and (.isDraft | not)) | .number")
+          if [ -z "$pr" ]; then
+            echo "No open, non-draft pull request at $HEAD_SHA; nothing to merge."
+            exit 0
+          fi
+          gh pr merge "$pr" --merge --match-head-commit "$HEAD_SHA"
+          gh workflow run build.yml --ref main

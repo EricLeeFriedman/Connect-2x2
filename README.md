@@ -26,7 +26,12 @@ For live reload while editing, use `dotnet watch --project src/Connect2x2` inste
 
 ## Play it online
 
-Every push to `main` deploys the game to GitHub Pages at **https://ericleefriedman.github.io/Connect-2x2/** (one-time setup: repo Settings → Pages → Source: *GitHub Actions*). It works on phones, tablets, and computers.
+The game is live at **https://ericleefriedman.github.io/Connect-2x2/** and works on phones, tablets, and computers.
+
+## How changes ship
+
+- **Pull requests merge themselves.** When the Build check passes on a pull request from a branch in this repo, the Auto-merge workflow merges it. Draft pull requests and pull requests from forks are never auto-merged.
+- **The site deploys only after main builds.** Every build of `main` that passes is deployed to GitHub Pages; a failing build leaves the current site in place.
 
 ## Putting it on another website
 
