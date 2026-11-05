@@ -19,7 +19,7 @@ For live reload while editing, use `dotnet watch --project src/Connect2x2` inste
 
 ## How to play
 
-- Players take turns. Click a column (or use the arrow keys and Enter). The question is for the lowest open spot in that column.
+- Players take turns. Tap or click an open spot; only the lowest open spot in each column can be picked (or use the arrow keys and Enter).
 - Type the answer with the keyboard or the on-screen number pad, then press Enter or ✓. Esc or "Pick a different column" backs out.
 - **Wrong answer?** Choose under the board: *Lose your turn* (the answer is shown and play passes on) or *Keep trying*.
 - Win by connecting four across, up, or diagonally. Scores and "facts right" carry over between games, and the starting player alternates.

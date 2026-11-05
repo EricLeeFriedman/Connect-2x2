@@ -253,7 +253,6 @@ button,
 }
 
 .col-label {
-    cursor: pointer;
     padding: 4px 0;
 }
 
@@ -272,6 +271,9 @@ button,
     border-radius: 50%;
     background: var(--hole);
     box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.35);
+}
+
+.cell.playable {
     cursor: pointer;
 }
 
