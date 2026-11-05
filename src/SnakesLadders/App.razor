@@ -1,0 +1,546 @@
+@using System.Globalization
+
+<main class="game">
+    <nav class="back"><a href="../">← All math games</a></nav>
+
+    <header class="title">
+        <h1>Times-Table <span class="nowrap"><span class="snake-text">Snakes</span> &amp; <span class="ladder-text">Ladders</span></span></h1>
+        <p>Roll the die, then answer the fact on the square you land on to move there.</p>
+    </header>
+
+    <section class="scoreboard" aria-label="Score">
+        @foreach (var player in session.Players)
+        {
+            <div class="score p@(player) @(IsActive(player) ? "active" : "")">
+                <span class="chip p@(player)"></span>
+                <div class="score-text">
+                    <span class="score-name">@Names[player]</span>
+                    <span class="score-facts">@WhereText(session.Positions[player])</span>
+                    <span class="score-facts">@session.CorrectAnswers[player]/@session.Attempts[player] right</span>
+                </div>
+                <span class="score-wins" title="Games won">@session.Wins[player]</span>
+            </div>
+        }
+    </section>
+
+    <section class="status @(session.IsOver ? "over" : "")" aria-live="polite">
+        @if (!string.IsNullOrEmpty(feedback))
+        {
+            <p class="feedback @feedbackKind">@feedback</p>
+        }
+        <p class="turn">
+            @if (!session.IsOver)
+            {
+                <span class="chip small p@(session.CurrentPlayer)"></span>
+            }
+            @StatusText()
+        </p>
+    </section>
+
+    <div class="roll-bar">
+        @if (session.IsOver)
+        {
+            <button type="button" class="primary" @onclick="NewGame">Play again</button>
+        }
+        else
+        {
+            <button type="button" class="roll p@(session.CurrentPlayer)" disabled="@(busy || !session.CanRoll)" @onclick="RollDie"
+                    aria-label="Roll the die">
+                <span class="die @(rolling ? "rolling" : "") @(dieFace is null ? "blank" : "")" @key="dieSpin" aria-hidden="true">
+                    @for (var i = 0; i < 9; i++)
+                    {
+                        <span class="pip @(dieFace is int face && Pips[face].Contains(i) ? "on" : "")"></span>
+                    }
+                </span>
+                <span class="roll-text">Roll</span>
+            </button>
+        }
+    </div>
+
+    <div class="board-frame">
+        <div class="board @(session.IsOver ? "over" : "")" role="img" aria-label="Snakes and ladders board">
+            <div class="tiles" aria-hidden="true">
+                @foreach (var square in Board.SquaresInScreenOrder())
+                {
+                    <div class="@TileClass(square)"></div>
+                }
+            </div>
+
+            <svg class="pieces" viewBox="0 0 100 100" aria-hidden="true">
+                @foreach (var jump in Board.Jumps.Where(j => j.IsLadder))
+                {
+                    var (a, b) = (Center(jump.From), Center(jump.To));
+                    var (ux, uy, nx, ny, length) = Frame(a, b);
+                    <g class="ladder">
+                        <line x1="@F(a.X + nx * LadderHalfWidth)" y1="@F(a.Y + ny * LadderHalfWidth)" x2="@F(b.X + nx * LadderHalfWidth)" y2="@F(b.Y + ny * LadderHalfWidth)" />
+                        <line x1="@F(a.X - nx * LadderHalfWidth)" y1="@F(a.Y - ny * LadderHalfWidth)" x2="@F(b.X - nx * LadderHalfWidth)" y2="@F(b.Y - ny * LadderHalfWidth)" />
+                        @for (var d = 2.0; d < length - 1; d += 3.2)
+                        {
+                            var (rx, ry) = (a.X + ux * d, a.Y + uy * d);
+                            <line class="rung" x1="@F(rx + nx * LadderHalfWidth)" y1="@F(ry + ny * LadderHalfWidth)" x2="@F(rx - nx * LadderHalfWidth)" y2="@F(ry - ny * LadderHalfWidth)" />
+                        }
+                    </g>
+                }
+                @{ var snakeNumber = 0; }
+                @foreach (var jump in Board.Jumps.Where(j => j.IsSnake))
+                {
+                    var (head, tail) = (Center(jump.From), Center(jump.To));
+                    var (ux, uy, nx, ny, _) = Frame(head, tail);
+                    var path = SnakePath(head, tail);
+                    <g class="snake s@(snakeNumber++ % 3)">
+                        <path class="body-edge" d="@path" />
+                        <path class="body" d="@path" />
+                        <path class="stripes" d="@path" />
+                        <line class="tongue" x1="@F(head.X - ux * 1.6)" y1="@F(head.Y - uy * 1.6)" x2="@F(head.X - ux * 3)" y2="@F(head.Y - uy * 3)" />
+                        <ellipse class="head" cx="@F(head.X)" cy="@F(head.Y)" rx="2.1" ry="2.1" />
+                        <circle class="eye" cx="@F(head.X - ux * 0.6 + nx * 0.9)" cy="@F(head.Y - uy * 0.6 + ny * 0.9)" r="0.55" />
+                        <circle class="eye" cx="@F(head.X - ux * 0.6 - nx * 0.9)" cy="@F(head.Y - uy * 0.6 - ny * 0.9)" r="0.55" />
+                    </g>
+                }
+            </svg>
+
+            <div class="labels">
+                @foreach (var square in Board.SquaresInScreenOrder())
+                {
+                    var fact = session.Facts[square];
+                    <div class="label @(session.Pending == square ? "target" : "")" aria-label="@SquareLabel(square, fact)">
+                        <span class="num">@square</span>
+                        <span class="fact" @key="fact">@fact.Left<span class="times">×</span>@fact.Right</span>
+                    </div>
+                }
+            </div>
+
+            <div class="tokens" aria-hidden="true">
+                @foreach (var player in session.Players)
+                {
+                    var square = ShownSquare(player);
+                    if (square == Board.Start)
+                    {
+                        continue;
+                    }
+
+                    var (x, y) = TokenSpot(player, square);
+                    <span class="token p@(player) @(moving == player ? "moving" : "") @(sliding && moving == player ? "sliding" : "") @(session.Winner == player ? "winner" : "")"
+                          style="left: @F(x)%; top: @F(y)%"></span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="start-row" aria-label="Players at the start">
+        <span class="start-label">Start</span>
+        @foreach (var player in session.Players.Where(p => ShownSquare(p) == Board.Start))
+        {
+            <span class="token-chip p@(player)" title="@Names[player]"></span>
+        }
+    </div>
+
+    <section class="options">
+        <fieldset>
+            <legend>Players</legend>
+            @for (var count = GameSession.MinPlayers; count <= GameSession.MaxPlayers; count++)
+            {
+                var players = count;
+                <label>
+                    <input type="radio" name="players" checked="@(session.PlayerCount == players)" disabled="@busy"
+                           @onchange="() => ChangePlayers(players)" />
+                    @players
+                </label>
+            }
+        </fieldset>
+        <fieldset>
+            <legend>Facts up to</legend>
+            @foreach (var limit in GameSession.FactLimits)
+            {
+                <label>
+                    <input type="radio" name="facts" checked="@(session.HighestFactor == limit)" disabled="@busy"
+                           @onchange="() => ChangeFacts(limit)" />
+                    @limit × @limit
+                </label>
+            }
+        </fieldset>
+        <fieldset>
+            <legend>Wrong answer?</legend>
+            <label>
+                <input type="radio" name="rule" checked="@(session.Rule == WrongAnswerRule.LoseTurn)"
+                       @onchange="() => session.Rule = WrongAnswerRule.LoseTurn" />
+                Lose your turn
+            </label>
+            <label>
+                <input type="radio" name="rule" checked="@(session.Rule == WrongAnswerRule.TryAgain)"
+                       @onchange="() => session.Rule = WrongAnswerRule.TryAgain" />
+                Keep trying
+            </label>
+        </fieldset>
+        <button type="button" class="secondary" disabled="@busy" @onclick="NewGame">New game</button>
+    </section>
+
+    <details class="how-to">
+        <summary>How to play</summary>
+        <ol>
+            <li>Everyone starts off the board. Take turns rolling the die, and the starting player moves along each game.</li>
+            <li>Before you move, answer the times-table fact on the square you'd land on. Get it right and you move there.</li>
+            <li>Get it wrong and, depending on the setting, you stay where you are and the turn passes, or you try again. A missed square gets a new fact.</li>
+            <li>Land on the foot of a ladder and you climb it. Land on a snake's head and you slide down to its tail.</li>
+            <li>You need the exact number to reach 100. Roll too high and you stay put. The first to reach 100 wins.</li>
+        </ol>
+        <p>Keyboard: press Enter or Space on the Roll button. In a question, type the number and press Enter.</p>
+    </details>
+</main>
+
+@if (session.Pending is int target && session.PendingFact is Fact question && !busy)
+{
+    <div class="overlay">
+        <div class="question-card p@(session.CurrentPlayer)" role="dialog" aria-modal="true" aria-label="Multiplication question"
+             tabindex="-1" @ref="questionRef" @onkeydown="OnQuestionKeyDown">
+            <p class="question-who">
+                <span class="chip small p@(session.CurrentPlayer)"></span>
+                @Names[session.CurrentPlayer] rolled @session.LastRoll: square @target
+            </p>
+            <p class="equation">
+                <span>@question.Left</span>
+                <span class="op">×</span>
+                <span>@question.Right</span>
+                <span class="op">=</span>
+                <span class="answer-box @(answerText.Length == 0 ? "empty" : "") @(wrongTries > 0 ? "wrong" : "")" @key="wrongTries">
+                    @(answerText.Length == 0 ? "?" : answerText)
+                </span>
+            </p>
+            <p class="question-feedback">@questionFeedback</p>
+
+            <div class="numpad">
+                @foreach (var digit in "123456789")
+                {
+                    <button type="button" tabindex="-1" @onmousedown:preventDefault="true" @onclick="() => AppendDigit(digit)">@digit</button>
+                }
+                <button type="button" tabindex="-1" class="key-back" aria-label="Delete" @onmousedown:preventDefault="true" @onclick="Backspace">⌫</button>
+                <button type="button" tabindex="-1" @onmousedown:preventDefault="true" @onclick="() => AppendDigit('0')">0</button>
+                <button type="button" tabindex="-1" class="key-enter" aria-label="Check answer" @onmousedown:preventDefault="true" @onclick="Submit">✓</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly string[] Names = ["Red", "Blue", "Yellow", "Purple"];
+    private const int MaxAnswerDigits = 3;
+    private const double LadderHalfWidth = 1.7;
+
+    // Which of the 3 × 3 spots on a die face have a pip, for 1 to 6.
+    private static readonly int[][] Pips = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
+
+    // Where tokens sit when several share a square, in board units (a square is 10 units).
+    private static readonly (double X, double Y)[] Crowded = [(-2.2, -2.2), (2.2, -2.2), (-2.2, 2.2), (2.2, 2.2)];
+
+    private readonly GameSession session = new();
+    private readonly Random dieRandom = new();
+
+    private string answerText = "";
+    private string? feedback;
+    private string feedbackKind = "";
+    private string? questionFeedback;
+    private int wrongTries;
+    private bool focusQuestion;
+    private ElementReference questionRef;
+
+    // The die and token animations. While busy, nothing else can be pressed.
+    private bool busy;
+    private bool rolling;
+    private int dieSpin;
+    private int? dieFace;
+    private int? moving;
+    private int shownSquare;
+    private bool sliding;
+
+    private bool IsActive(int player) => !session.IsOver && session.CurrentPlayer == player;
+
+    private static string WhereText(int square) => square == Board.Start ? "Start" : $"Square {square}";
+
+    private string StatusText()
+    {
+        if (session.Winner is int winner)
+        {
+            return $"{Names[winner]} reaches 100 and wins!";
+        }
+
+        if (busy && !rolling)
+        {
+            return "Moving…";
+        }
+
+        return $"{Names[session.CurrentPlayer]}'s turn: roll the die.";
+    }
+
+    private int ShownSquare(int player) => moving == player ? shownSquare : session.Positions[player];
+
+    private static string F(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static (double X, double Y) Center(int square)
+    {
+        var spot = Board.SpotOf(square);
+        return (spot.Column * 10 + 5, spot.Row * 10 + 5);
+    }
+
+    // The unit direction from a to b, the unit direction across it, and the distance.
+    private static (double Ux, double Uy, double Nx, double Ny, double Length) Frame((double X, double Y) a, (double X, double Y) b)
+    {
+        var (dx, dy) = (b.X - a.X, b.Y - a.Y);
+        var length = Math.Sqrt(dx * dx + dy * dy);
+        var (ux, uy) = (dx / length, dy / length);
+        return (ux, uy, -uy, ux, length);
+    }
+
+    // A wavy line from the head to the tail: one bend every 12 units or so, alternating sides.
+    private static string SnakePath((double X, double Y) head, (double X, double Y) tail)
+    {
+        var (ux, uy, nx, ny, length) = Frame(head, tail);
+        var bends = Math.Max(2, (int)Math.Round(length / 12));
+        var step = length / bends;
+        var wave = Math.Min(4.5, step * 0.45);
+        var path = $"M{F(head.X)} {F(head.Y)} Q{F(head.X + ux * step / 2 + nx * wave)} {F(head.Y + uy * step / 2 + ny * wave)} {F(head.X + ux * step)} {F(head.Y + uy * step)}";
+        for (var i = 2; i <= bends; i++)
+        {
+            path += $" T{F(head.X + ux * step * i)} {F(head.Y + uy * step * i)}";
+        }
+
+        return path;
+    }
+
+    private string TileClass(int square)
+    {
+        var spot = Board.SpotOf(square);
+        var classes = (spot.Row + spot.Column) % 2 == 0 ? "tile light" : "tile dark";
+        if (square == Board.Finish)
+        {
+            classes += " finish";
+        }
+
+        if (session.Pending == square)
+        {
+            classes += " target";
+        }
+
+        return classes;
+    }
+
+    private static string SquareLabel(int square, Fact fact)
+    {
+        var label = $"Square {square}: {fact.Left} times {fact.Right}";
+        return Board.JumpFrom(square) switch
+        {
+            { IsLadder: true } jump => $"{label}, ladder up to {jump.To}",
+            { IsSnake: true } jump => $"{label}, snake down to {jump.To}",
+            _ => label,
+        };
+    }
+
+    private (double X, double Y) TokenSpot(int player, int square)
+    {
+        var (x, y) = Center(square);
+        var sharing = session.Players.Where(p => ShownSquare(p) == square).ToList();
+        if (sharing.Count > 1)
+        {
+            var (ox, oy) = Crowded[sharing.IndexOf(player)];
+            (x, y) = (x + ox, y + oy);
+        }
+
+        return (x, y);
+    }
+
+    private async Task RollDie()
+    {
+        if (busy || !session.CanRoll)
+        {
+            return;
+        }
+
+        busy = true;
+        rolling = true;
+        feedback = null;
+        dieSpin++;
+        for (var i = 0; i < 7; i++)
+        {
+            dieFace = dieRandom.Next(1, GameSession.DieSides + 1);
+            StateHasChanged();
+            await Task.Delay(70);
+        }
+
+        var roller = session.CurrentPlayer;
+        var result = session.Roll();
+        dieFace = session.LastRoll;
+        rolling = false;
+        StateHasChanged();
+
+        if (result == RollResult.TooFar)
+        {
+            var need = Board.Finish - session.Positions[roller];
+            feedback = $"{Names[roller]} rolled {session.LastRoll} but needs exactly {need} to reach 100, so stays put.";
+            feedbackKind = "info";
+            busy = false;
+            return;
+        }
+
+        // A moment to see the number before the question covers the board.
+        await Task.Delay(350);
+        busy = false;
+        answerText = "";
+        questionFeedback = null;
+        wrongTries = 0;
+        focusQuestion = true;
+    }
+
+    private async Task OnQuestionKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key.Length == 1 && char.IsAsciiDigit(e.Key[0]))
+        {
+            AppendDigit(e.Key[0]);
+        }
+        else if (e.Key == "Backspace" || e.Key == "Delete")
+        {
+            Backspace();
+        }
+        else if (e.Key == "Enter")
+        {
+            await Submit();
+        }
+    }
+
+    private void AppendDigit(char digit)
+    {
+        if (answerText.Length < MaxAnswerDigits)
+        {
+            answerText += digit;
+        }
+
+        questionFeedback = null;
+    }
+
+    private void Backspace()
+    {
+        if (answerText.Length > 0)
+        {
+            answerText = answerText[..^1];
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (busy || session.PendingFact is not Fact question)
+        {
+            return;
+        }
+
+        if (answerText.Length == 0)
+        {
+            questionFeedback = "Type your answer first.";
+            return;
+        }
+
+        var answer = int.Parse(answerText);
+        var fact = $"{question.Left} × {question.Right} = {question.Product}";
+        var mover = session.CurrentPlayer;
+
+        switch (session.SubmitAnswer(answer))
+        {
+            case AnswerResult.Correct:
+                feedback = $"Correct! {fact}.";
+                feedbackKind = "good";
+                if (session.LastMove is Move move)
+                {
+                    feedback += move.Jump switch
+                    {
+                        { IsLadder: true } => $" Up the ladder to {move.To}!",
+                        { IsSnake: true } => $" Oh no, a snake! Down to {move.To}.",
+                        _ => "",
+                    };
+                    await Animate(move);
+                }
+
+                break;
+            case AnswerResult.WrongTryAgain:
+                wrongTries++;
+                questionFeedback = $"{answer} isn't it. Try again!";
+                answerText = "";
+                focusQuestion = true;
+                break;
+            case AnswerResult.WrongTurnLost:
+                feedback = $"Not quite: {fact}. {Names[mover]} stays {(session.Positions[mover] == Board.Start ? "at the start" : $"on {session.Positions[mover]}")}.";
+                feedbackKind = "bad";
+                break;
+        }
+
+        StateHasChanged();
+    }
+
+    // Hops the token one square at a time to where it landed, then up the ladder or down the snake.
+    private async Task Animate(Move move)
+    {
+        busy = true;
+        moving = move.Player;
+        sliding = false;
+        for (var square = move.From + 1; square <= move.Landed; square++)
+        {
+            shownSquare = square;
+            StateHasChanged();
+            await Task.Delay(160);
+        }
+
+        if (move.To != move.Landed)
+        {
+            await Task.Delay(250);
+            sliding = true;
+            shownSquare = move.To;
+            StateHasChanged();
+            await Task.Delay(750);
+        }
+
+        moving = null;
+        sliding = false;
+        busy = false;
+    }
+
+    private void NewGame()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        session.NewGame();
+        dieFace = null;
+        feedback = $"New game! {Names[session.CurrentPlayer]} goes first.";
+        feedbackKind = "info";
+    }
+
+    private void ChangePlayers(int count)
+    {
+        session.SetPlayerCount(count);
+        dieFace = null;
+        feedback = $"New game for {count} players! {Names[session.CurrentPlayer]} goes first.";
+        feedbackKind = "info";
+    }
+
+    private void ChangeFacts(int highest)
+    {
+        session.SetHighestFactor(highest);
+        dieFace = null;
+        feedback = $"New game with facts up to {highest} × {highest}. {Names[session.CurrentPlayer]} goes first.";
+        feedbackKind = "info";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusQuestion && session.Pending is not null && !busy)
+        {
+            focusQuestion = false;
+            try
+            {
+                await questionRef.FocusAsync();
+            }
+            catch (Exception)
+            {
+                // The card was not on screen yet; focus is only a convenience.
+            }
+        }
+    }
+}

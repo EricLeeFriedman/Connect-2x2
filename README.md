@@ -1,12 +1,13 @@
 # Math Games
 
-Three classic board games for practising times tables, each at its own link:
+Four classic board games for practising times tables, each at its own link:
 
 - **Connect 2×2**: https://ericleefriedman.github.io/Connect-2x2/connect2x2/
 - **Times-Table Checkers**: https://ericleefriedman.github.io/Connect-2x2/checkers/
 - **Times-Table Tic-Tac-Toe**: https://ericleefriedman.github.io/Connect-2x2/tictactoe/
+- **Times-Table Snakes & Ladders**: https://ericleefriedman.github.io/Connect-2x2/snakes/
 
-The site root (https://ericleefriedman.github.io/Connect-2x2/) is a small landing page that links to all three. The links follow the repository name, so if the repository is renamed (for example to `math-games`) the games move to `https://ericleefriedman.github.io/math-games/connect2x2/` and `.../checkers/` and `.../tictactoe/` on the next deploy, with no code changes.
+The site root (https://ericleefriedman.github.io/Connect-2x2/) is a small landing page that links to all four. The links follow the repository name, so if the repository is renamed (for example to `math-games`) the games move to `https://ericleefriedman.github.io/math-games/connect2x2/` and `.../checkers/`, `.../tictactoe/` and `.../snakes/` on the next deploy, with no code changes.
 
 ## Connect 2×2
 
@@ -35,6 +36,17 @@ Tic-tac-toe for two players on one device. Every square shows a multiplication f
 - No two squares share a fact (on 4 × 4 with facts up to 5 there aren't enough to go round, so a few repeat).
 - Scores, "facts right", and the starting player carry over between games like the others. Changing the board or the facts starts a new game.
 
+## Times-Table Snakes & Ladders
+
+Snakes and ladders for 2 to 4 players on one device, with the usual rules. The 100 squares each show a multiplication fact, and before you move you answer the fact on the square you'd land on.
+
+- Tap **Roll**. The square you'd land on lights up and its fact pops up. Get it right and your token hops there.
+- Land on the foot of a ladder and you climb it; land on a snake's head and you slide down to its tail.
+- A wrong answer means you stay where you are and the turn passes, or you try again (the same setting as the other games). A missed square gets a new fact.
+- You need the exact roll to reach 100; roll too high and you stay put. First to 100 wins.
+- **Facts up to** 5 × 5, 10 × 10, or 12 × 12. Squares within one roll of each other never show the same fact.
+- Scores, "facts right", and the starting player carry over between games. Changing the players or the facts starts a new game.
+
 ## Run it locally
 
 1. Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (`dotnet --version` should print `10.x`).
@@ -44,13 +56,14 @@ Tic-tac-toe for two players on one device. Every square shows a multiplication f
    dotnet run --project src/Connect2x2   # http://localhost:5222
    dotnet run --project src/Checkers     # http://localhost:5223
    dotnet run --project src/TicTacToe    # http://localhost:5224
+   dotnet run --project src/SnakesLadders # http://localhost:5225
    ```
 
 3. The browser usually opens on its own.
 
 For live reload while editing, use `dotnet watch --project src/Checkers` (or `src/Connect2x2`) instead.
 
-The checkers and tic-tac-toe rules each have a small self-checking program (no test framework): `dotnet run --project tests/Checkers.Tests` and `dotnet run --project tests/TicTacToe.Tests`. CI runs both on every build.
+The checkers, tic-tac-toe, and snakes and ladders rules each have a small self-checking program (no test framework): `dotnet run --project tests/Checkers.Tests`, `dotnet run --project tests/TicTacToe.Tests`, and `dotnet run --project tests/SnakesLadders.Tests`. CI runs them on every build.
 
 ## How to play Connect 2×2
 
@@ -71,6 +84,7 @@ The checkers and tic-tac-toe rules each have a small self-checking program (no t
 dotnet publish src/Connect2x2 -c Release -o publish/connect2x2
 dotnet publish src/Checkers -c Release -o publish/checkers
 dotnet publish src/TicTacToe -c Release -o publish/tictactoe
+dotnet publish src/SnakesLadders -c Release -o publish/snakes
 ```
 
 Everything in each `publish/<game>/wwwroot` is plain static files (HTML, CSS, JS, and WebAssembly), so it can be uploaded to any static host: GitHub Pages, Netlify, Azure Static Web Apps, or a regular web server. If the site lives in a sub-folder (for example `https://example.com/connect/`), change `<base href="/" />` in `wwwroot/index.html` to that folder (`<base href="/connect/" />`).
@@ -97,6 +111,13 @@ src/TicTacToe/
   Game/GameSession.cs    turns, questions, wrong-answer rule, board size, fact range, scores
   App.razor              the page
   wwwroot/css/app.css    all styling and animations
+src/SnakesLadders/
+  Game/Board.cs          the 1 to 100 layout and where the snakes and ladders go
+  Game/Facts.cs          the fact in each square
+  Game/GameSession.cs    rolls, questions, wrong-answer rule, players, scores
+  App.razor              the page: die, board, snakes and ladders drawing, tokens
+  wwwroot/css/app.css    all styling and animations
 tests/Checkers.Tests/    rule checks for the checkers game
 tests/TicTacToe.Tests/   rule checks for the tic-tac-toe game
+tests/SnakesLadders.Tests/ rule checks for the snakes and ladders game
 ```

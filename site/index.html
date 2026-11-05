@@ -28,7 +28,7 @@
         }
 
         main {
-            max-width: 1040px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 32px 16px 48px;
         }
@@ -47,8 +47,21 @@
 
         .games {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-template-columns: 1fr;
             gap: 18px;
+        }
+
+        /* Two cards a row on tablets, all four in one row on wide screens. */
+        @media (min-width: 560px) {
+            .games {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1040px) {
+            .games {
+                grid-template-columns: repeat(4, 1fr);
+            }
         }
 
         .game {
@@ -102,6 +115,10 @@
 
         .tictactoe .play {
             background: #6d28d9;
+        }
+
+        .snakes .play {
+            background: #c2410c;
         }
     </style>
 </head>
@@ -172,6 +189,69 @@
                 </svg>
                 <h2>Times-Table <span style="white-space: nowrap">Tic-Tac-Toe</span></h2>
                 <p>Answer a square's fact to claim it. Three in a row wins, or four on the bigger board.</p>
+                <span class="play">Play</span>
+            </a>
+            <a class="game snakes" href="snakes/">
+                <svg viewBox="0 0 140 100" aria-hidden="true">
+                    <rect width="140" height="100" fill="#c2410c" />
+                    <g>
+                        <rect x="0" y="0" width="20" height="20" fill="#fff7ed" />
+                        <rect x="20" y="0" width="20" height="20" fill="#fde4c8" />
+                        <rect x="40" y="0" width="20" height="20" fill="#fff7ed" />
+                        <rect x="60" y="0" width="20" height="20" fill="#fde4c8" />
+                        <rect x="80" y="0" width="20" height="20" fill="#fff7ed" />
+                        <rect x="100" y="0" width="20" height="20" fill="#fde4c8" />
+                        <rect x="120" y="0" width="20" height="20" fill="#fff7ed" />
+                        <rect x="0" y="20" width="20" height="20" fill="#fde4c8" />
+                        <rect x="20" y="20" width="20" height="20" fill="#fff7ed" />
+                        <rect x="40" y="20" width="20" height="20" fill="#fde4c8" />
+                        <rect x="60" y="20" width="20" height="20" fill="#fff7ed" />
+                        <rect x="80" y="20" width="20" height="20" fill="#fde4c8" />
+                        <rect x="100" y="20" width="20" height="20" fill="#fff7ed" />
+                        <rect x="120" y="20" width="20" height="20" fill="#fde4c8" />
+                        <rect x="0" y="40" width="20" height="20" fill="#fff7ed" />
+                        <rect x="20" y="40" width="20" height="20" fill="#fde4c8" />
+                        <rect x="40" y="40" width="20" height="20" fill="#fff7ed" />
+                        <rect x="60" y="40" width="20" height="20" fill="#fde4c8" />
+                        <rect x="80" y="40" width="20" height="20" fill="#fff7ed" />
+                        <rect x="100" y="40" width="20" height="20" fill="#fde4c8" />
+                        <rect x="120" y="40" width="20" height="20" fill="#fff7ed" />
+                        <rect x="0" y="60" width="20" height="20" fill="#fde4c8" />
+                        <rect x="20" y="60" width="20" height="20" fill="#fff7ed" />
+                        <rect x="40" y="60" width="20" height="20" fill="#fde4c8" />
+                        <rect x="60" y="60" width="20" height="20" fill="#fff7ed" />
+                        <rect x="80" y="60" width="20" height="20" fill="#fde4c8" />
+                        <rect x="100" y="60" width="20" height="20" fill="#fff7ed" />
+                        <rect x="120" y="60" width="20" height="20" fill="#fde4c8" />
+                        <rect x="0" y="80" width="20" height="20" fill="#fff7ed" />
+                        <rect x="20" y="80" width="20" height="20" fill="#fde4c8" />
+                        <rect x="40" y="80" width="20" height="20" fill="#fff7ed" />
+                        <rect x="60" y="80" width="20" height="20" fill="#fde4c8" />
+                        <rect x="80" y="80" width="20" height="20" fill="#fff7ed" />
+                        <rect x="100" y="80" width="20" height="20" fill="#fde4c8" />
+                        <rect x="120" y="80" width="20" height="20" fill="#fff7ed" />
+                    </g>
+                    <g fill="#431407" font-family="sans-serif" font-weight="bold" font-size="6.5" text-anchor="middle">
+                        <text x="10" y="13">7×8</text><text x="50" y="13">6×9</text><text x="90" y="13">4×12</text><text x="130" y="13">9×9</text>
+                        <text x="30" y="33">8×6</text><text x="70" y="33">3×7</text>
+                        <text x="10" y="53">5×5</text><text x="70" y="53">11×4</text><text x="130" y="53">6×7</text>
+                        <text x="50" y="73">9×3</text><text x="90" y="73">12×6</text>
+                        <text x="30" y="93">2×9</text><text x="110" y="93">8×8</text>
+                    </g>
+                    <g stroke="#92400e" stroke-width="2.2" stroke-linecap="round">
+                        <path d="M20 92L52 18M30 96L62 22" />
+                        <path d="M23.5 84l10 4.4M28 74l10 4.4M32.5 64l10 4.4M37 54l10 4.4M41.5 44l10 4.4M46 34l10 4.4M50.5 24l10 4.4" stroke-width="1.8" />
+                    </g>
+                    <path d="M112 12Q126 26 108 38T104 64T118 88" fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="8" stroke-linecap="round" />
+                    <path d="M112 12Q126 26 108 38T104 64T118 88" fill="none" stroke="#16a34a" stroke-width="6" stroke-linecap="round" />
+                    <path d="M112 12Q126 26 108 38T104 64T118 88" fill="none" stroke="#bbf7d0" stroke-width="6" stroke-dasharray="2 6" />
+                    <circle cx="112" cy="12" r="5.5" fill="#16a34a" />
+                    <circle cx="110" cy="10.5" r="1.5" fill="#fff" /><circle cx="114.5" cy="11" r="1.5" fill="#fff" />
+                    <circle cx="74" cy="88" r="6" fill="#e11d48" stroke="#fff" stroke-width="2" />
+                    <circle cx="88" cy="48" r="6" fill="#0284c7" stroke="#fff" stroke-width="2" />
+                </svg>
+                <h2>Times-Table <span style="white-space: nowrap">Snakes &amp; Ladders</span></h2>
+                <p>Roll the die and answer the fact on the square you land on. Climb the ladders, dodge the snakes.</p>
                 <span class="play">Play</span>
             </a>
         </div>

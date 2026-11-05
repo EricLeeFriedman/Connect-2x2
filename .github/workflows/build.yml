@@ -8,6 +8,7 @@ name: Build
 #   /<repo>/connect2x2/  Connect 2x2
 #   /<repo>/checkers/    Times-Table Checkers
 #   /<repo>/tictactoe/   Times-Table Tic-Tac-Toe
+#   /<repo>/snakes/      Times-Table Snakes & Ladders
 
 on:
   push:
@@ -31,10 +32,13 @@ jobs:
       - run: dotnet publish src/Connect2x2 -c Release -o publish/connect2x2
       - run: dotnet publish src/Checkers -c Release -o publish/checkers
       - run: dotnet publish src/TicTacToe -c Release -o publish/tictactoe
+      - run: dotnet publish src/SnakesLadders -c Release -o publish/snakes
       - name: Check the checkers rules
         run: dotnet run --project tests/Checkers.Tests -c Release
       - name: Check the tic-tac-toe rules
         run: dotnet run --project tests/TicTacToe.Tests -c Release
+      - name: Check the snakes and ladders rules
+        run: dotnet run --project tests/SnakesLadders.Tests -c Release
 
       # Pages serves the site from /<repo-name>/, so each game's base path is /<repo-name>/<game>/.
       - name: Put the landing page and the games together
@@ -43,7 +47,7 @@ jobs:
         run: |
           mkdir -p site-out
           cp site/index.html site-out/index.html
-          for game in connect2x2 checkers tictactoe; do
+          for game in connect2x2 checkers tictactoe snakes; do
             cp -r "publish/$game/wwwroot" "site-out/$game"
             sed -i "s|<base href=\"/\" />|<base href=\"$SITE_ROOT/$game/\" />|" "site-out/$game/index.html"
             grep -q "<base href=\"$SITE_ROOT/$game/\" />" "site-out/$game/index.html"
