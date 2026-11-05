@@ -36,6 +36,13 @@ button {
     cursor: pointer;
 }
 
+/* Fast taps on phones: no double-tap zoom on the board or buttons. */
+button,
+.board {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
 .loading {
     text-align: center;
     margin-top: 30vh;
