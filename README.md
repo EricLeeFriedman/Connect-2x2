@@ -2,12 +2,12 @@
 
 Four classic board games for practising times tables, each at its own link:
 
-- **Connect 2×2**: https://ericleefriedman.github.io/Connect-2x2/connect2x2/
-- **Times-Table Checkers**: https://ericleefriedman.github.io/Connect-2x2/checkers/
-- **Times-Table Tic-Tac-Toe**: https://ericleefriedman.github.io/Connect-2x2/tictactoe/
-- **Times-Table Snakes & Ladders**: https://ericleefriedman.github.io/Connect-2x2/snakes/
+- **Connect 2×2**: https://ericleefriedman.github.io/MathGames/connect2x2/
+- **Times-Table Checkers**: https://ericleefriedman.github.io/MathGames/checkers/
+- **Times-Table Tic-Tac-Toe**: https://ericleefriedman.github.io/MathGames/tictactoe/
+- **Times-Table Snakes & Ladders**: https://ericleefriedman.github.io/MathGames/snakes/
 
-The site root (https://ericleefriedman.github.io/Connect-2x2/) is a small landing page that links to all four. The links follow the repository name, so if the repository is renamed (for example to `math-games`) the games move to `https://ericleefriedman.github.io/math-games/connect2x2/` and `.../checkers/`, `.../tictactoe/` and `.../snakes/` on the next deploy, with no code changes.
+The site root (https://ericleefriedman.github.io/MathGames/) is a small landing page that links to all four. Each game's path is built from the repository name at deploy time, so if the repository is ever renamed again the links move with it on the next deploy, with no code changes (only this README needs updating).
 
 ## Connect 2×2
 
